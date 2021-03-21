@@ -1,0 +1,18 @@
+{
+  "name": "helloworld",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "tsc-src": "tsc src/*.ts --target ES6 --sourceMap true",
+    "tsc-build": "tsc --project tsconfig.json",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.9.6",
+    "json-diff": "^0.5.4",
+    "typescript": "^4.2.3"
+  }
+}
