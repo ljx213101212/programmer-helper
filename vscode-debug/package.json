@@ -4,13 +4,19 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "tsc-src": "tsc src/*.ts --target ES6 --sourceMap true",
+    "tsc-src": "tsc src/*.ts --target ES6 --sourceMap true --moduleResolution node",
     "tsc-build": "tsc --project tsconfig.json",
+    "esbuild-jsondiff": "esbuild --bundle src/lib/json-diff/cli.js --outdir=out/dist --sourcemap --platform=node --target=es2017",
+    "esbuild-src": "esbuild --bundle ./src/ --outdir=out --sourcemap --platform=node --target=es2017",
+    "browserify-bundle": "browserify out/index.js -o out/bundle.js -d",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/node": "^14.14.35",
+    "browserify": "^17.0.0",
+    "cjs-to-es6": "^1.1.1",
     "esbuild": "^0.9.6",
     "json-diff": "^0.5.4",
     "typescript": "^4.2.3"

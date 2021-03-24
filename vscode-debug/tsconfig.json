@@ -4,7 +4,8 @@
         "target": "es6",
         "sourceMap": true,
         "sourceRoot": "./src",
-        "outDir": "./out"
+        "outDir": "./out",
+        "moduleResolution": "node"
     },
     "exclude": [
         "node_modules"
