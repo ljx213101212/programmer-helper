@@ -2,7 +2,7 @@
 
 ### 1. typescript to javascript
 ```
-yarn run tsc-src
+yarn run tsc src/*.ts --target ES6 --sourceMap true --moduleResolution node
 ```
 
 ### 2. esbuild to out (commonjs)
