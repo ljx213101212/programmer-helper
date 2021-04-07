@@ -6,7 +6,6 @@
   "scripts": {
     "tsc-src": "tsc src/*.ts --target ES6 --sourceMap true --moduleResolution node",
     "tsc-build": "tsc --project tsconfig.json",
-    "esbuild-jsondiff": "esbuild --bundle src/lib/json-diff/cli.js --outdir=out/dist --sourcemap --platform=node --target=es2017",
     "esbuild-src": "esbuild --bundle ./src/ --outdir=out --sourcemap --platform=node --target=es2017",
     "browserify-bundle": "browserify out/index.js -o out/bundle.js -d",
     "test": "echo \"Error: no test specified\" && exit 1"
