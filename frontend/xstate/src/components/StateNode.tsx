@@ -48,8 +48,7 @@ function  StateNode() {
 
     return (
         <div className="StateNode">
-            Hello there.
-
+             <h1>StateNode</h1>
             <button onClick= {()=> {
                 startTheDay();
             }}>Start the Day</button>
