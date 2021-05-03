@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 import { createMachine, assign, send, Machine, spawn, interpret } from "xstate";
 import { useMachine } from "@xstate/react";
 
-function  StateNode() {
+function StateNode() {
 
     const timeOfDayMachine = Machine({
         id: 'timeOfDay',

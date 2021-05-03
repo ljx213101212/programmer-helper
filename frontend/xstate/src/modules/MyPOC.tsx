@@ -28,6 +28,14 @@ export const holdMachine = Machine(
           ],
           clutch_on: [
             {
+              actions: respond("notAllowed"),
+              in: "#hold.otfs.active",
+            },
+            {
+              actions: respond("notAllowed"),
+              in: "#hold.otfm.active",
+            },
+            {
               target: ".active",
               in: "#hold.clutch.inactive",
             },
@@ -55,6 +63,14 @@ export const holdMachine = Machine(
           ],
           otfs_on: [
             {
+              actions: respond("notAllowed"),
+              in: "#hold.clutch.active",
+            },
+            {
+              actions: respond("notAllowed"),
+              in: "#hold.otfm.active",
+            },
+            {
               target: ".active",
               in: "#hold.otfs.inactive",
             },
@@ -78,6 +94,14 @@ export const holdMachine = Machine(
             { actions: respond("respond") },
           ],
           otfm_on: [
+            {
+              actions: respond("notAllowed"),
+              in: "#hold.otfs.active",
+            },
+            {
+              actions: respond("notAllowed"),
+              in: "#hold.clutch.active",
+            },
             {
               target: ".active",
               in: "#hold.otfm.inactive",
@@ -130,20 +154,12 @@ export const deviceStateMachine = Machine(
       },
       idle: {
         on: {
-          dpiUI: [
-            {
-              target: "dpiUI",
-              cond: { type: "dpiUIGuard" },
-            },
-            { target: ".invalid" },
-          ],
-          pollingRateUI: [
-            {
-              target: "pollingRateUI",
-              cond: { type: "pollingRateUIGuard" },
-            },
-            { target: ".invalid" },
-          ],
+          performanceUI: {
+            target: "performance",
+          },
+          lightingUI: {
+            target: "lighting",
+          },
           clutch: {
             target: "clutch",
           },
@@ -160,6 +176,49 @@ export const deviceStateMachine = Machine(
           invalid: {
             entry: ["notifyFail"],
             onDone: "normal",
+          },
+        },
+      },
+      performance: {
+        on: {
+          dpi: [
+            {
+              actions: ["processDPI", raise("completed")],
+              cond: { type: "dpiUIGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          pollingRate: [
+            {
+              actions: ["processPollingRate", raise("completed")],
+              cond: { type: "pollingRateUIGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          completed: {
+            target: "idle",
+          },
+          failed: {
+            actions: ["notifyFail"],
+            target: "idle",
+          },
+        }
+      },
+      lighting: {
+        on: {
+          brightness: [
+            {
+              actions: ["processBrightness", raise("completed")],
+              cond: { type: "brightnessUIGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          completed: {
+            target: "idle",
+          },
+          failed: {
+            actions: ["notifyFail"],
+            target: "idle",
           },
         },
       },
@@ -262,6 +321,9 @@ export const deviceStateMachine = Machine(
       processPollingRate: (context, event) => {
         console.log("process polling rate");
       },
+      processBrightness: (context, event) => {
+        console.log("process brightness");
+      },
     },
     guards: {
       dpiUIGuard: (context: any, event: any) => {
@@ -276,6 +338,9 @@ export const deviceStateMachine = Machine(
         if (otfm === "active") {
           return false;
         }
+        return true;
+      },
+      brightnessUIGuard: (context: any, event: any) => {
         return true;
       },
       isClutchAllowed: (context: any, event: any) => {
@@ -302,6 +367,7 @@ export const deviceStateMachine = Machine(
     },
   }
 );
+
 
 function MyPOCUI() {
   const service = interpret(deviceStateMachine, { devTools: true })
