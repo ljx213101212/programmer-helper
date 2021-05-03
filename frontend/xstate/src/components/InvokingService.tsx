@@ -66,6 +66,7 @@ function InvokingService() {
       waitingForCode: {
         on: {
           CODE: {
+            //[respond] https://xstate.js.org/docs/guides/actions.html#respond-action
             actions: respond("TOKEN", { delay: 1000 }),
           },
         },

@@ -11,7 +11,7 @@ import {
 
 const { respond, raise } = actions;
 
-export const holdMachine = Machine(
+const holdMachine = Machine(
   {
     id: "hold",
     type: "parallel",
@@ -24,30 +24,38 @@ export const holdMachine = Machine(
               target: ".inactive",
               in: "#hold.clutch.active",
             },
-            { actions: respond("respond") },
+            { actions: respond("completed") },
           ],
           clutch_on: [
             {
-              actions: respond("notAllowed"),
+              actions: respond("failed"),
               in: "#hold.otfs.active",
             },
             {
-              actions: respond("notAllowed"),
+              actions: respond("failed"),
               in: "#hold.otfm.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.calibration.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.macroRecorder.active",
             },
             {
               target: ".active",
               in: "#hold.clutch.inactive",
             },
-            { actions: respond("respond") },
+            { actions: respond("completed") },
           ],
         },
         states: {
           active: {
-            entry: ["clutchKeyDown", respond("respond")],
+            entry: ["clutchKeyDown", respond("completed")],
           },
           inactive: {
-            entry: ["clutchKeyUp", sendParent("respond")],
+            entry: ["clutchKeyUp", respond("completed")],
           },
         },
       },
@@ -59,30 +67,38 @@ export const holdMachine = Machine(
               target: ".inactive",
               in: "#hold.otfs.active",
             },
-            { actions: respond("respond") },
+            { actions: respond("completed") },
           ],
           otfs_on: [
             {
-              actions: respond("notAllowed"),
+              actions: respond("failed"),
               in: "#hold.clutch.active",
             },
             {
-              actions: respond("notAllowed"),
+              actions: respond("failed"),
               in: "#hold.otfm.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.calibration.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.macroRecorder.active",
             },
             {
               target: ".active",
               in: "#hold.otfs.inactive",
             },
-            { actions: respond("respond") },
+            { actions: respond("completed") },
           ],
         },
         states: {
           active: {
-            entry: ["otfsKeyDown", respond("respond")],
+            entry: ["otfsKeyDown", respond("completed")],
           },
           inactive: {
-            entry: ["otfsKeyUp", sendParent("respond")],
+            entry: ["otfsKeyUp", respond("completed")],
           },
         },
       },
@@ -91,30 +107,118 @@ export const holdMachine = Machine(
         on: {
           otfm_off: [
             { target: ".inactive", in: "#hold.otfm.active" },
-            { actions: respond("respond") },
+            { actions: respond("completed") },
           ],
           otfm_on: [
             {
-              actions: respond("notAllowed"),
+              actions: respond("failed"),
               in: "#hold.otfs.active",
             },
             {
-              actions: respond("notAllowed"),
+              actions: respond("failed"),
               in: "#hold.clutch.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.calibration.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.macroRecorder.active",
             },
             {
               target: ".active",
               in: "#hold.otfm.inactive",
             },
-            { actions: respond("respond") },
+            { actions: respond("completed") },
           ],
         },
         states: {
           active: {
-            entry: ["otfmKeyDown", respond("respond")],
+            entry: ["otfmKeyDown", respond("completed")],
           },
           inactive: {
-            entry: ["otfmKeyUp", sendParent("respond")],
+            entry: ["otfmKeyUp", respond("completed")],
+          },
+        },
+      },
+      calibration: {
+        initial: "inactive",
+        on: {
+          calibration_off: [
+            { target: ".inactive", in: "#hold.calibration.active" },
+            { actions: respond("completed") },
+          ],
+          calibration_on: [
+            {
+              actions: respond("failed"),
+              in: "#hold.otfs.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.clutch.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.otfm.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.macroRecorder.active",
+            },
+            {
+              target: ".active",
+              in: "#hold.calibration.inactive",
+            },
+            { actions: respond("completed") },
+          ],
+        },
+        states: {
+          active: {
+            entry: ["calibrationStart", respond("completed")],
+          },
+          inactive: {
+            entry: ["calibrationEnd", respond("completed")],
+          },
+        },
+      },
+      macroRecorder: {
+        initial: "inactive",
+        on: {
+          macroRecorder_off: [
+            { target: ".inactive", in: "#hold.macroRecorder.active" },
+            { actions: respond("completed") },
+          ],
+          macroRecorder_on: [
+            {
+              actions: respond("failed"),
+              in: "#hold.otfs.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.clutch.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.otfm.active",
+            },
+            {
+              actions: respond("failed"),
+              in: "#hold.calibration.active",
+            },
+            {
+              target: ".active",
+              in: "#hold.macroRecorder.inactive",
+            },
+            { actions: respond("completed") },
+          ],
+        },
+        states: {
+          active: {
+            entry: ["macroRecorderStart", respond("completed")],
+          },
+          inactive: {
+            entry: ["macroRecorderEnd", respond("completed")],
           },
         },
       },
@@ -134,11 +238,24 @@ export const holdMachine = Machine(
       otfsKeyUp: (context, event) => {
         console.log("otfs key up inner");
       },
+      otfmKeyDown: (context, event) => {
+        console.log("otfm key down inner");
+      },
+      otfmKeyUp: (context, event) => {
+        console.log("otfm key up inner");
+      },
+      calibrationStart: (context, event) => {
+        console.log("calibration start inner");
+      },
+      calibrationEnd: (context, event) => {
+        console.log("calibration end inner");
+      },
+      
     },
   }
 );
 
-export const deviceStateMachine = Machine(
+const deviceStateMachine = Machine(
   {
     id: "device",
     initial: "starting",
@@ -154,11 +271,14 @@ export const deviceStateMachine = Machine(
       },
       idle: {
         on: {
+          customizeUI: {
+            target: "customizeUI",
+          },
           performanceUI: {
-            target: "performance",
+            target: "performanceUI",
           },
           lightingUI: {
-            target: "lighting",
+            target: "lightingUI",
           },
           clutch: {
             target: "clutch",
@@ -169,17 +289,30 @@ export const deviceStateMachine = Machine(
           otfm: {
             target: "otfm",
           },
+          switchProfile: {
+            target: "switchProfile",
+          }
         },
-        initial: "normal",
-        states: {
-          normal: {},
-          invalid: {
-            entry: ["notifyFail"],
-            onDone: "normal",
+      },
+      customizeUI: {
+        on: {
+          keyMapping: [
+            {
+              actions: ["processkeyMapping", raise("completed")],
+              cond: { type: "keyMappingGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          completed: {
+            target: "idle",
+          },
+          failed: {
+            actions: ["notifyFail"],
+            target: "idle",
           },
         },
       },
-      performance: {
+      performanceUI: {
         on: {
           dpi: [
             {
@@ -202,9 +335,9 @@ export const deviceStateMachine = Machine(
             actions: ["notifyFail"],
             target: "idle",
           },
-        }
+        },
       },
-      lighting: {
+      lightingUI: {
         on: {
           brightness: [
             {
@@ -213,6 +346,45 @@ export const deviceStateMachine = Machine(
             },
             { actions: raise("failed") },
           ],
+          offLightingSetting: [
+            {
+              actions: ["processSwitchOffSetting", raise("completed")],
+              cond: { type: "offLightingSettingGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          lightingEffects: [
+            {
+              actions: ["processLightingEffects", raise("completed")],
+              cond: { type: "lightingEffectsGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          completed: {
+            target: "idle",
+          },
+          failed: {
+            actions: ["notifyFail"],
+            target: "idle",
+          },
+        },
+      },
+      calibration: {
+        on: {
+          start: [
+            {
+              actions: send("calibration_on", {
+                to: (context: any) => context.holdMachine,
+              }),
+              cond: { type: "isCalibrationAllowed" },
+            },
+            { actions: raise("failed") },
+          ],
+          end: {
+            actions: send("calibration_off", {
+              to: (context: any) => context.holdMachine,
+            }),
+          },
           completed: {
             target: "idle",
           },
@@ -231,17 +403,17 @@ export const deviceStateMachine = Machine(
               }),
               cond: { type: "isClutchAllowed" },
             },
-            { actions: raise("notAllowed") },
+            { actions: raise("failed") },
           ],
           end: {
             actions: send("clutch_off", {
               to: (context: any) => context.holdMachine,
             }),
           },
-          respond: {
+          completed: {
             target: "idle",
           },
-          notAllowed: {
+          failed: {
             actions: ["notifyFail"],
             target: "idle",
           },
@@ -256,17 +428,17 @@ export const deviceStateMachine = Machine(
               }),
               cond: { type: "isOtfsAllowed" },
             },
-            { actions: raise("notAllowed") },
+            { actions: raise("failed") },
           ],
           end: {
             actions: send("otfs_off", {
               to: (context: any) => context.holdMachine,
             }),
           },
-          respond: {
+          completed: {
             target: "idle",
           },
-          notAllowed: {
+          failed: {
             actions: ["notifyFail"],
             target: "idle",
           },
@@ -281,30 +453,40 @@ export const deviceStateMachine = Machine(
               }),
               cond: { type: "isOtfmAllowed" },
             },
-            { actions: raise("notAllowed") },
+            { actions: raise("failed") },
           ],
           end: {
             actions: send("otfm_off", {
               to: (context: any) => context.holdMachine,
             }),
           },
-          respond: {
+          completed: {
             target: "idle",
           },
-          notAllowed: {
+          failed: {
             actions: ["notifyFail"],
             target: "idle",
           },
         },
       },
-      dpiUI: {
-        entry: ["processDPI"],
-        onDone: "idle",
-      },
-      pollingRateUI: {
-        entry: ["processPollingRate"],
-        onDone: "idle",
-      },
+      switchProfile: {
+        on: {
+          switchProfile: [
+            {
+              actions: ["processswitchProfile", raise("completed")],
+              cond: { type: "switchProfileGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          completed: {
+            target: "idle",
+          },
+          failed: {
+            actions: ["notifyFail"],
+            target: "idle",
+          },
+        },
+      }
     },
   },
   {
@@ -324,8 +506,14 @@ export const deviceStateMachine = Machine(
       processBrightness: (context, event) => {
         console.log("process brightness");
       },
+      processKeyMapping: (context, event) => {
+        console.log("process key mapping");
+      },
     },
     guards: {
+      keyMappingGuard: (context: any, event: any) => {
+        return true;
+      },
       dpiUIGuard: (context: any, event: any) => {
         const { clutch, otfs, otfm } = context.holdMachine.state.value;
         if (clutch === "active" || otfs === "active" || otfm === "active") {
@@ -343,23 +531,43 @@ export const deviceStateMachine = Machine(
       brightnessUIGuard: (context: any, event: any) => {
         return true;
       },
+      offLightingSettingGuard: (context: any, event: any) => {
+        return true;
+      },
+      lightingEffectsGuard: (context: any, event: any) => {
+        return true;
+      },
+      isCalibrationAllowed: (context: any, event: any) => {
+        const { otfm, otfs, clutch } = context.holdMachine.state.value;
+        if (otfm === "active" || otfs === "active" || clutch === "active") {
+          return false;
+        }
+        return true;
+      },
       isClutchAllowed: (context: any, event: any) => {
-        const { otfm, otfs } = context.holdMachine.state.value;
-        if (otfm === "active" || otfs === "active") {
+        const { otfm, otfs, calibration } = context.holdMachine.state.value;
+        if (otfm === "active" || otfs === "active" || calibration === "active") {
           return false;
         }
         return true;
       },
       isOtfsAllowed: (context: any, event: any) => {
-        const { clutch, otfm } = context.holdMachine.state.value;
-        if (otfm === "active" || clutch === "active") {
+        const { clutch, otfm, calibration } = context.holdMachine.state.value;
+        if (otfm === "active" || clutch === "active" || calibration === "active") {
           return false;
         }
         return true;
       },
       isOtfmAllowed: (context: any, event: any) => {
-        const { clutch, otfs } = context.holdMachine.state.value;
-        if (otfs === "active" || clutch === "active") {
+        const { clutch, otfs, calibration } = context.holdMachine.state.value;
+        if (otfs === "active" || clutch === "active" || calibration === "active") {
+          return false;
+        }
+        return true;
+      },
+      switchProfileGuard: (context: any, event: any) => {
+        const { clutch, otfs, otfm, calibration } = context.holdMachine.state.value;
+        if (otfs === "active" || clutch === "active" || calibration === "active" || otfm === "active") {
           return false;
         }
         return true;
@@ -367,7 +575,6 @@ export const deviceStateMachine = Machine(
     },
   }
 );
-
 
 function MyPOCUI() {
   const service = interpret(deviceStateMachine, { devTools: true })
