@@ -5,7 +5,7 @@ import { createMachine, assign, send, Machine, spawn, interpret, State } from "x
 import { useMachine } from "@xstate/react";
 
 import StateNode from "./components/StateNode";
-
+import InvokingService from "./components/InvokingService";
 
 const holdMachine = Machine(
   {
@@ -184,7 +184,7 @@ function App() {
          Process DPI DONE
       </button> */}
       <StateNode></StateNode>
-
+      <InvokingService></InvokingService>
     </div>
   );
 }

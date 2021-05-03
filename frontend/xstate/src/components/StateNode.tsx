@@ -14,7 +14,7 @@ function  StateNode() {
         states: {
           // Transient state
           unknown: {
-            on: {
+            on: {//[Null Events] https://xstate.js.org/docs/guides/events.html#null-events
               '': [
                 { target: 'morning', cond: 'isBeforeNoon' },
                 { target: 'afternoon', cond: 'isBeforeSix' },
