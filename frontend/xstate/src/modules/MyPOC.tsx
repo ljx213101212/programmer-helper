@@ -250,7 +250,6 @@ const holdMachine = Machine(
       calibrationEnd: (context, event) => {
         console.log("calibration end inner");
       },
-      
     },
   }
 );
@@ -291,20 +290,21 @@ const deviceStateMachine = Machine(
           },
           switchProfile: {
             target: "switchProfile",
-          }
+          },
         },
       },
       customizeUI: {
         on: {
           keyMapping: [
             {
-              actions: ["processkeyMapping", raise("completed")],
+              actions: ["processKeyMapping"],
               cond: { type: "keyMappingGuard" },
             },
             { actions: raise("failed") },
           ],
           completed: {
             target: "idle",
+            actions: ["notifyDone"]
           },
           failed: {
             actions: ["notifyFail"],
@@ -486,7 +486,7 @@ const deviceStateMachine = Machine(
             target: "idle",
           },
         },
-      }
+      },
     },
   },
   {
@@ -512,6 +512,7 @@ const deviceStateMachine = Machine(
     },
     guards: {
       keyMappingGuard: (context: any, event: any) => {
+        console.log("doing keyMappingGuard");
         return true;
       },
       dpiUIGuard: (context: any, event: any) => {
@@ -546,28 +547,50 @@ const deviceStateMachine = Machine(
       },
       isClutchAllowed: (context: any, event: any) => {
         const { otfm, otfs, calibration } = context.holdMachine.state.value;
-        if (otfm === "active" || otfs === "active" || calibration === "active") {
+        if (
+          otfm === "active" ||
+          otfs === "active" ||
+          calibration === "active"
+        ) {
           return false;
         }
         return true;
       },
       isOtfsAllowed: (context: any, event: any) => {
         const { clutch, otfm, calibration } = context.holdMachine.state.value;
-        if (otfm === "active" || clutch === "active" || calibration === "active") {
+        if (
+          otfm === "active" ||
+          clutch === "active" ||
+          calibration === "active"
+        ) {
           return false;
         }
         return true;
       },
       isOtfmAllowed: (context: any, event: any) => {
         const { clutch, otfs, calibration } = context.holdMachine.state.value;
-        if (otfs === "active" || clutch === "active" || calibration === "active") {
+        if (
+          otfs === "active" ||
+          clutch === "active" ||
+          calibration === "active"
+        ) {
           return false;
         }
         return true;
       },
       switchProfileGuard: (context: any, event: any) => {
-        const { clutch, otfs, otfm, calibration } = context.holdMachine.state.value;
-        if (otfs === "active" || clutch === "active" || calibration === "active" || otfm === "active") {
+        const {
+          clutch,
+          otfs,
+          otfm,
+          calibration,
+        } = context.holdMachine.state.value;
+        if (
+          otfs === "active" ||
+          clutch === "active" ||
+          calibration === "active" ||
+          otfm === "active"
+        ) {
           return false;
         }
         return true;
@@ -590,6 +613,14 @@ function MyPOCUI() {
       </button>
       <button onClick={() => service.send(["clutch", "key_up"])}>
         Release clutch
+      </button>
+
+      <button onClick={() => service.send(["idle", "customizeUI"])}>
+        Go to customizeUI page.
+      </button>
+
+      <button onClick={() => service.send(["customizeUI", "keyMapping"])}>
+        Do any keyMapping.
       </button>
     </div>
   );
