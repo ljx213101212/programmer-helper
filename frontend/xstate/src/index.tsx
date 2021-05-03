@@ -1,11 +1,18 @@
 import "./style.css";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { createMachine, assign, send, Machine, spawn, interpret, State } from "xstate";
+import { createMachine, assign, send, sendParent ,Machine, spawn, interpret, actions} from "xstate";
+import { inspect } from "@xstate/inspect";
 import { useMachine } from "@xstate/react";
 
 import StateNode from "./components/StateNode";
 import InvokingService from "./components/InvokingService";
+const { respond, raise} = actions;
+
+inspect({
+  url: "https://statecharts.io/inspect",
+  iframe: false
+});
 
 const holdMachine = Machine(
   {
@@ -14,33 +21,79 @@ const holdMachine = Machine(
     states: {
       clutch: {
         initial: "inactive",
+        on: {
+          clutch_off: [
+            {
+              target: ".inactive",
+              in: "#hold.clutch.active",
+            },
+            { actions: respond("respond") },
+          ],
+          clutch_on: [
+            {
+              target: ".active",
+              in: "#hold.clutch.inactive",
+            },
+            { actions: respond("respond") },
+          ],
+        },
         states: {
           active: {
-            entry: ["clutchKeyDown"],
-            on: {
-              clutch_off: "inactive",
-            },
+            entry: ["clutchKeyDown", respond("respond")],
           },
           inactive: {
-            entry: ["clutchKeyUp"],
-            on: {
-              clutch_on: "active",
-            },
+            entry: ["clutchKeyUp", sendParent("respond")],
           },
         },
       },
       otfs: {
         initial: "inactive",
+        on: {
+          otfs_off: [
+            {
+              target: ".inactive",
+              in: "#hold.otfs.active",
+            },
+            { actions: respond("respond") },
+          ],
+          otfs_on: [
+            {
+              target: ".active",
+              in: "#hold.otfs.inactive",
+            },
+            { actions: respond("respond") },
+          ],
+        },
         states: {
           active: {
-            on: {
-              otfs_off: "inactive",
-            },
+            entry: ["otfsKeyDown", respond("respond")],
           },
           inactive: {
-            on: {
-              otfs_on: "active",
+            entry: ["otfsKeyUp", sendParent("respond")],
+          },
+        },
+      },
+      otfm: {
+        initial: "inactive",
+        on: {
+          otfm_off: [
+            { target: ".inactive", in: "#hold.otfm.active" },
+            { actions: respond("respond") },
+          ],
+          otfm_on: [
+            {
+              target: ".active",
+              in: "#hold.otfm.inactive",
             },
+            { actions: respond("respond") },
+          ],
+        },
+        states: {
+          active: {
+            entry: ["otfmKeyDown", respond("respond")],
+          },
+          inactive: {
+            entry: ["otfmKeyUp", sendParent("respond")],
           },
         },
       },
@@ -53,6 +106,12 @@ const holdMachine = Machine(
       },
       clutchKeyUp: (context, event) => {
         console.log("clutch key up inner");
+      },
+      otfsKeyDown: (context, event) => {
+        console.log("otfs key down inner");
+      },
+      otfsKeyUp: (context, event) => {
+        console.log("otfs key up inner");
       },
     },
   }
@@ -80,8 +139,21 @@ const deviceStateMachine = Machine(
             },
             { target: ".invalid" },
           ],
+          pollingRateUI: [
+            {
+              target: "pollingRateUI",
+              cond: { type: "pollingRateUIGuard" },
+            },
+            { target: ".invalid" },
+          ],
           clutch: {
             target: "clutch",
+          },
+          otfs: {
+            target: "otfs",
+          },
+          otfm: {
+            target: "otfm",
           },
         },
         initial: "normal",
@@ -89,47 +161,92 @@ const deviceStateMachine = Machine(
           normal: {},
           invalid: {
             entry: ["notifyFail"],
+            onDone: "normal"
           },
         },
       },
       clutch: {
-        initial: "processing",
         on: {
-          key_down: {
-            actions: send("clutch_on", {
-              to: (context: any) => {
-                console.log(context);
-                return context.holdMachine;
-              },
-            }),
-            target: ".completed",
-          },
-          key_up: {
+          start: [
+            {
+              actions: send("clutch_on", {
+                to: (context: any) => context.holdMachine,
+              }),
+              cond: { type: "isClutchAllowed" },
+            },
+            { actions: raise("notAllowed") },
+          ],
+          end: {
             actions: send("clutch_off", {
               to: (context: any) => context.holdMachine,
             }),
-            target: ".completed",
+          },
+          respond: {
+            target: "idle",
+          },
+          notAllowed: {
+            actions: ["notifyFail"],
+            target: "idle",
           },
         },
-        states: {
-          processing: {},
-          completed: {
-            type: "final",
+      },
+      otfs: {
+        on: {
+          start: [
+            {
+              actions: send("otfs_on", {
+                to: (context: any) => context.holdMachine,
+              }),
+              cond: { type: "isOtfsAllowed" },
+            },
+            { actions: raise("notAllowed") },
+          ],
+          end: {
+            actions: send("otfs_off", {
+              to: (context: any) => context.holdMachine,
+            }),
+          },
+          respond: {
+            target: "idle",
+          },
+          notAllowed: {
+            actions: ["notifyFail"],
+            target: "idle",
           },
         },
-        onDone: {
-          target: "idle",
-          actions: ["notifyDone"],
+      },
+      otfm: {
+        on: {
+          start: [
+            {
+              actions: send("otfm_on", {
+                to: (context: any) => context.holdMachine,
+              }),
+              cond: { type: "isOtfmAllowed" },
+            },
+            { actions: raise("notAllowed") },
+          ],
+          end: {
+            actions: send("otfm_off", {
+              to: (context: any) => context.holdMachine,
+            }),
+          },
+          respond: {
+            target: "idle",
+          },
+          notAllowed: {
+            actions: ["notifyFail"],
+            target: "idle",
+          },
         },
       },
       dpiUI: {
         entry: ["processDPI"],
         onDone: "idle",
-        on: {
-          idle: {
-            target: "idle",
-          },
-        },
+      },
+      pollingRateUI: {
+        entry: ["processPollingRate"],
+        onDone: "idle",
       },
     },
   },
@@ -139,16 +256,47 @@ const deviceStateMachine = Machine(
         console.log("fail");
       },
       notifyDone: (context, event) => {
-        console.log("event:", event.type, "context:", context);
+        console.log("done");
       },
       processDPI: (context, event) => {
         console.log("process dpi");
       },
+      processPollingRate: (context, event) => {
+        console.log("process polling rate");
+      },
     },
     guards: {
       dpiUIGuard: (context: any, event: any) => {
+        const { clutch, otfs, otfm } = context.holdMachine.state.value;
+        if (clutch === "active" || otfs === "active" || otfm === "active") {
+          return false;
+        }
+        return true;
+      },
+      pollingRateUIGuard: (context: any, event: any) => {
+        const { otfm } = context.holdMachine.state.value;
+        if (otfm === "active") {
+          return false;
+        }
+        return true;
+      },
+      isClutchAllowed: (context: any, event: any) => {
+        const { otfm, otfs } = context.holdMachine.state.value;
+        if (otfm === "active" || otfs === "active") {
+          return false;
+        }
+        return true;
+      },
+      isOtfsAllowed: (context: any, event: any) => {
+        const { clutch, otfm } = context.holdMachine.state.value;
+        if (otfm === "active" || clutch === "active") {
+          return false;
+        }
+        return true;
+      },
+      isOtfmAllowed: (context: any, event: any) => {
         const { clutch, otfs } = context.holdMachine.state.value;
-        if (clutch === "active" || otfs === "active") {
+        if (otfs === "active" || clutch === "active") {
           return false;
         }
         return true;
@@ -162,7 +310,7 @@ function App() {
   const active = current.matches("active");
   const { dpi } = current.context;
 
-  const service = interpret(deviceStateMachine)
+  const service = interpret(deviceStateMachine, { devTools: true })
   .onTransition((state) => console.log(state.value, state.context))
   .start();
 
