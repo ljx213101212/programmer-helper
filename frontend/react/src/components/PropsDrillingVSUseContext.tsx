@@ -92,6 +92,8 @@ const User = (props: UserActionProp) => {
 
 
 //useContext Start
+//pros: solved the props drilling issue
+//cons: introduce context dependency.
 
 const MyContext = React.createContext(undefined);
 
