@@ -7,7 +7,7 @@ import { useMachine } from "@xstate/react";
 
 import StateNode from "./components/StateNode";
 import InvokingService from "./components/InvokingService";
-import MyPOCUI from "./modules/MyPOC";
+import LatestPOCUI from "./modules/LatestPOC";
 const { respond, raise} = actions;
 
 inspect({
@@ -20,7 +20,7 @@ function App() {
 
   return (
     <div className="App">
-      <MyPOCUI></MyPOCUI>
+      <LatestPOCUI></LatestPOCUI>
       <StateNode></StateNode>
       <InvokingService></InvokingService>
     </div>

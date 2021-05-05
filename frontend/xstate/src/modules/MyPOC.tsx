@@ -16,289 +16,137 @@ const holdMachine = Machine(
     id: "hold",
     type: "parallel",
     states: {
-      clutch: {
+      soundPreview: {
         initial: "inactive",
         on: {
-          clutch_off: [
+          sound_preview_off: [
             {
               target: ".inactive",
-              in: "#hold.clutch.active",
+              in: "#hold.soundPreview.active",
             },
             { actions: respond("completed") },
           ],
-          clutch_on: [
+          sound_preview_on: [
             {
               actions: respond("failed"),
-              in: "#hold.otfs.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.otfm.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.calibration.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.macroRecorder.active",
+              in: "#hold.micPreview.active",
             },
             {
               target: ".active",
-              in: "#hold.clutch.inactive",
+              in: "#hold.soundPreview.inactive",
             },
             { actions: respond("completed") },
           ],
         },
         states: {
           active: {
-            entry: ["clutchKeyDown", respond("completed")],
+            entry: ["soundPreviewKeyDown", respond("completed")],
           },
           inactive: {
-            entry: ["clutchKeyUp", respond("completed")],
+            entry: ["soundPreviewKeyUp", respond("completed")],
           },
         },
-      },
-      otfs: {
-        initial: "inactive",
-        on: {
-          otfs_off: [
-            {
-              target: ".inactive",
-              in: "#hold.otfs.active",
-            },
-            { actions: respond("completed") },
-          ],
-          otfs_on: [
-            {
-              actions: respond("failed"),
-              in: "#hold.clutch.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.otfm.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.calibration.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.macroRecorder.active",
-            },
-            {
-              target: ".active",
-              in: "#hold.otfs.inactive",
-            },
-            { actions: respond("completed") },
-          ],
-        },
-        states: {
-          active: {
-            entry: ["otfsKeyDown", respond("completed")],
+      }
+      micPreview: {
+          initial: "inactive",
+          on: {
+            mic_preview_off: [
+                {
+                  target: ".inactive",
+                  in: "#hold.micPreview.active",   
+                },
+                { actions: respond("completed") },
+            ],
+            mic_preview_on: [
+              {
+                actions: respond("failed"),
+                in: "#hold.soundPreview.active",
+              },
+              {
+                target: ".active",
+                in: "#hold.micPreview.inactive",
+              },
+              { actions: respond("completed") },
+            ]
           },
-          inactive: {
-            entry: ["otfsKeyUp", respond("completed")],
-          },
-        },
-      },
-      otfm: {
-        initial: "inactive",
-        on: {
-          otfm_off: [
-            { target: ".inactive", in: "#hold.otfm.active" },
-            { actions: respond("completed") },
-          ],
-          otfm_on: [
-            {
-              actions: respond("failed"),
-              in: "#hold.otfs.active",
+          states: {
+            active: {
+              entry: ["micPreviewKeyDown", respond("completed")],
             },
-            {
-              actions: respond("failed"),
-              in: "#hold.clutch.active",
+            inactive: {
+              entry: ["micPreviewKeyUp", respond("completed")],
             },
-            {
-              actions: respond("failed"),
-              in: "#hold.calibration.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.macroRecorder.active",
-            },
-            {
-              target: ".active",
-              in: "#hold.otfm.inactive",
-            },
-            { actions: respond("completed") },
-          ],
-        },
-        states: {
-          active: {
-            entry: ["otfmKeyDown", respond("completed")],
-          },
-          inactive: {
-            entry: ["otfmKeyUp", respond("completed")],
-          },
-        },
-      },
-      calibration: {
-        initial: "inactive",
-        on: {
-          calibration_off: [
-            { target: ".inactive", in: "#hold.calibration.active" },
-            { actions: respond("completed") },
-          ],
-          calibration_on: [
-            {
-              actions: respond("failed"),
-              in: "#hold.otfs.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.clutch.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.otfm.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.macroRecorder.active",
-            },
-            {
-              target: ".active",
-              in: "#hold.calibration.inactive",
-            },
-            { actions: respond("completed") },
-          ],
-        },
-        states: {
-          active: {
-            entry: ["calibrationStart", respond("completed")],
-          },
-          inactive: {
-            entry: ["calibrationEnd", respond("completed")],
-          },
-        },
-      },
-      macroRecorder: {
-        initial: "inactive",
-        on: {
-          macroRecorder_off: [
-            { target: ".inactive", in: "#hold.macroRecorder.active" },
-            { actions: respond("completed") },
-          ],
-          macroRecorder_on: [
-            {
-              actions: respond("failed"),
-              in: "#hold.otfs.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.clutch.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.otfm.active",
-            },
-            {
-              actions: respond("failed"),
-              in: "#hold.calibration.active",
-            },
-            {
-              target: ".active",
-              in: "#hold.macroRecorder.inactive",
-            },
-            { actions: respond("completed") },
-          ],
-        },
-        states: {
-          active: {
-            entry: ["macroRecorderStart", respond("completed")],
-          },
-          inactive: {
-            entry: ["macroRecorderEnd", respond("completed")],
-          },
-        },
-      },
-    },
+          }
+      }
+    }
   },
   {
     actions: {
-      clutchKeyDown: (context, event) => {
-        console.log("clutch key down inner");
+      soundPreviewKeyDown: (context, event) => {
+        console.log("sound preview key down");
       },
-      clutchKeyUp: (context, event) => {
-        console.log("clutch key up inner");
+      soundPreviewKeyUp: (context, event) => {
+        console.log("sound preview key uo");
       },
-      otfsKeyDown: (context, event) => {
-        console.log("otfs key down inner");
+      micPreviewKeyDown: (context, event) => {
+        console.log("mic preview key down");
       },
-      otfsKeyUp: (context, event) => {
-        console.log("otfs key up inner");
-      },
-      otfmKeyDown: (context, event) => {
-        console.log("otfm key down inner");
-      },
-      otfmKeyUp: (context, event) => {
-        console.log("otfm key up inner");
-      },
-      calibrationStart: (context, event) => {
-        console.log("calibration start inner");
-      },
-      calibrationEnd: (context, event) => {
-        console.log("calibration end inner");
-      },
+      micPreviewKeyUp: (context, event) => {
+        console.log("mic preview key down");
+      }
     },
   }
+
 );
 
-const deviceStateMachine = Machine(
+const nariUltimateStateMachine = Machine(
   {
     id: "device",
+    type: 'parallel',
     initial: "starting",
     context: {
-      holdMachine: null,
+      isPlayingTestAudio: false,
+
     },
     states: {
       starting: {
-        entry: assign<any>({
-          holdMachine: () => spawn(holdMachine),
-        }),
+        entry: () => { console.log("starting")},
         always: "idle",
       },
       idle: {
         on: {
-          customizeUI: {
-            target: "customizeUI",
+          soundUI: {
+            target: "soundUI",
           },
-          performanceUI: {
-            target: "performanceUI",
+          mixerUI: {
+            target: "mixerUI",
+          },
+          enhancementUI: {
+            target: "enhancementUI",
+          },
+          eqUI: {
+            target: "eqUI",
+          },
+          micUI: {
+            target: "micUI",
           },
           lightingUI: {
             target: "lightingUI",
           },
-          clutch: {
-            target: "clutch",
-          },
-          otfs: {
-            target: "otfs",
-          },
-          otfm: {
-            target: "otfm",
-          },
+          powerUI: {
+            target: "powerUI",
+          }
           switchProfile: {
             target: "switchProfile",
           },
         },
       },
-      customizeUI: {
+      soundUI: {
         on: {
-          keyMapping: [
+          thxSpatialAudioDemo: [
             {
-              actions: ["processKeyMapping"],
-              cond: { type: "keyMappingGuard" },
+              actions: ["playingTEST", raise("completed") ],
+              cond: { type: "playingGuard" },
             },
             { actions: raise("failed") },
           ],
@@ -312,22 +160,93 @@ const deviceStateMachine = Machine(
           },
         },
       },
-      performanceUI: {
+      mixerUI: {
         on: {
-          dpi: [
+          thxSpatialAudioDemo: [
             {
-              actions: ["processDPI", raise("completed")],
+              actions: ["playingTEST",raise("completed")],
+              cond: { type: "playingGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          thxSpatialAudioStatus: [
+            {
+              actions: ["processTHXSpatialAudioStatus", raise("completed")],
               cond: { type: "dpiUIGuard" },
             },
             { actions: raise("failed") },
           ],
-          pollingRate: [
+          completed: {
+            target: "idle",
+          },
+          failed: {
+            actions: ["notifyFail"],
+            target: "idle",
+          },
+        },
+      },
+      enhancementUI: {
+        on: {
+          bassBoost: [
             {
-              actions: ["processPollingRate", raise("completed")],
-              cond: { type: "pollingRateUIGuard" },
+              actions: ["processBassBoost", raise("completed")],
+              cond: { type: "bassBoostUIGuard" },
             },
             { actions: raise("failed") },
           ],
+          voiceClarity: [
+            {
+              actions: ["processVoiceClarity", raise("completed")],
+              cond: { type: "voiceClarityUIGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          soundNormalization: [
+            {
+              actions: ["processHapticIntensity", raise("completed")],
+              cond: { type: "hapticIntensityUIGuard" },
+            },
+            { actions: raise("failed") },
+          ],
+          completed: {
+            target: "idle",
+          },
+          failed: {
+            actions: ["notifyFail"],
+            target: "idle",
+          },
+        },
+      },
+      eqUI: {
+        on: {
+          eq: [
+            {
+              actions: ["processEQ", raise("completed")],
+              cond: { type:"eqUIGuard" }
+            },
+            { actions: raise("failed") }
+          ],
+          completed: {
+            target: "idle",
+          },
+          failed: {
+            actions: ["notifyFail"],
+            target: "idle",
+          },
+        },
+      },
+      micUI: {
+        on: {
+           micPreviewStart: {
+            actions: send("mic_preview_on", {
+              to: (context: any) => context.holdMachine,
+            }),
+          },
+          micPreviewEnd: {
+            actions: send("mic_preview_off", {
+              to: (context: any) => context.holdMachine,
+            }),
+          },
           completed: {
             target: "idle",
           },
@@ -369,111 +288,29 @@ const deviceStateMachine = Machine(
           },
         },
       },
-      calibration: {
+      powerUI: {
         on: {
-          start: [
+          powerSaving: [
             {
-              actions: send("calibration_on", {
-                to: (context: any) => context.holdMachine,
-              }),
-              cond: { type: "isCalibrationAllowed" },
+             actions: ["processPowerSaving", raise("completed")],
+             cond: { type: "powerSavingUIGuard" },
             },
-            { actions: raise("failed") },
+            { actions: raise("failed") }
           ],
-          end: {
-            actions: send("calibration_off", {
-              to: (context: any) => context.holdMachine,
-            }),
-          },
-          completed: {
-            target: "idle",
-          },
-          failed: {
-            actions: ["notifyFail"],
-            target: "idle",
-          },
-        },
-      },
-      clutch: {
-        on: {
-          start: [
+          offPowerSaving: [
             {
-              actions: send("clutch_on", {
-                to: (context: any) => context.holdMachine,
-              }),
-              cond: { type: "isClutchAllowed" },
+             actions: ["processOffPowerSaving", raise("completed")],
+             cond: { type: "powerOffSavingUIGuard" },
             },
-            { actions: raise("failed") },
-          ],
-          end: {
-            actions: send("clutch_off", {
-              to: (context: any) => context.holdMachine,
-            }),
-          },
-          completed: {
-            target: "idle",
-          },
-          failed: {
-            actions: ["notifyFail"],
-            target: "idle",
-          },
-        },
-      },
-      otfs: {
-        on: {
-          start: [
-            {
-              actions: send("otfs_on", {
-                to: (context: any) => context.holdMachine,
-              }),
-              cond: { type: "isOtfsAllowed" },
-            },
-            { actions: raise("failed") },
-          ],
-          end: {
-            actions: send("otfs_off", {
-              to: (context: any) => context.holdMachine,
-            }),
-          },
-          completed: {
-            target: "idle",
-          },
-          failed: {
-            actions: ["notifyFail"],
-            target: "idle",
-          },
-        },
-      },
-      otfm: {
-        on: {
-          start: [
-            {
-              actions: send("otfm_on", {
-                to: (context: any) => context.holdMachine,
-              }),
-              cond: { type: "isOtfmAllowed" },
-            },
-            { actions: raise("failed") },
-          ],
-          end: {
-            actions: send("otfm_off", {
-              to: (context: any) => context.holdMachine,
-            }),
-          },
-          completed: {
-            target: "idle",
-          },
-          failed: {
-            actions: ["notifyFail"],
-            target: "idle",
-          },
-        },
+            { actions: raise("failed") }
+          ]
+        }
       },
       switchProfile: {
         on: {
           switchProfile: [
             {
-              actions: ["processswitchProfile", raise("completed")],
+              actions: ["processSwitchProfile", raise("completed")],
               cond: { type: "switchProfileGuard" },
             },
             { actions: raise("failed") },
@@ -497,27 +334,49 @@ const deviceStateMachine = Machine(
       notifyDone: (context, event) => {
         console.log("done");
       },
-      processDPI: (context, event) => {
-        console.log("process dpi");
+      processTHXSpatialAudioStatus: (context, event) => {
+        console.log("process THXSpatialAudioStatus");
       },
-      processPollingRate: (context, event) => {
-        console.log("process polling rate");
+      processBassBoost: (context, event) => {
+        console.log("process BassBoost");
       },
       processBrightness: (context, event) => {
         console.log("process brightness");
       },
-      processKeyMapping: (context, event) => {
-        console.log("process key mapping");
+      processVoiceClarity: (context, event) => {
+        console.log("process voice clarity");
       },
+      processHapticIntensity: (context, event) => {
+        console.log("process haptic intensity");
+      },
+      processEQ: (context, event) => {
+        console.log("process EQ");
+      },
+      processSwitchOffSetting: (context, event) => {
+        console.log("process switchoff setting");
+      },
+      processLightingEffects: (context, event) => {
+        console.log("process lighting effects");
+      },
+      processSwitchProfile: (conext, event) => {
+        console.log("process switch profile");
+      },
+      processPowerSaving: (context, event) => {
+        console.log("process powersaving");
+      },
+    
     },
     guards: {
-      keyMappingGuard: (context: any, event: any) => {
-        console.log("doing keyMappingGuard");
+      playingGuard: (context: any, event: any) => {
+        if (context.isPlayingTestAudio) {
+          console.log("Another Test Audio is playing already.");
+          return false;
+        }
         return true;
       },
-      dpiUIGuard: (context: any, event: any) => {
-        const { clutch, otfs, otfm } = context.holdMachine.state.value;
-        if (clutch === "active" || otfs === "active" || otfm === "active") {
+      thxSpatialAudioStatusGuard: (context: any, event: any) => {
+        const { status } = context.thx;
+        if (!status) {
           return false;
         }
         return true;
@@ -529,53 +388,28 @@ const deviceStateMachine = Machine(
         }
         return true;
       },
-      brightnessUIGuard: (context: any, event: any) => {
+      bassBoostUIGuard: (context: any, event: any) => {
+        return true;
+      },
+      voiceClarityUIGuard: () => {
+        return true;
+      },
+      hapticIntensityUIGuard: () => {
         return true;
       },
       offLightingSettingGuard: (context: any, event: any) => {
         return true;
       },
+      eqUIGuard: (context:any, event: any) => {
+        return true;
+      },
+      powerSavingUIGuard: (context: any, event: any) => {
+        return true;
+      },
+      powerOffSavingUIGuard: (context: any,event: any) => {
+        return true;
+      },
       lightingEffectsGuard: (context: any, event: any) => {
-        return true;
-      },
-      isCalibrationAllowed: (context: any, event: any) => {
-        const { otfm, otfs, clutch } = context.holdMachine.state.value;
-        if (otfm === "active" || otfs === "active" || clutch === "active") {
-          return false;
-        }
-        return true;
-      },
-      isClutchAllowed: (context: any, event: any) => {
-        const { otfm, otfs, calibration } = context.holdMachine.state.value;
-        if (
-          otfm === "active" ||
-          otfs === "active" ||
-          calibration === "active"
-        ) {
-          return false;
-        }
-        return true;
-      },
-      isOtfsAllowed: (context: any, event: any) => {
-        const { clutch, otfm, calibration } = context.holdMachine.state.value;
-        if (
-          otfm === "active" ||
-          clutch === "active" ||
-          calibration === "active"
-        ) {
-          return false;
-        }
-        return true;
-      },
-      isOtfmAllowed: (context: any, event: any) => {
-        const { clutch, otfs, calibration } = context.holdMachine.state.value;
-        if (
-          otfs === "active" ||
-          clutch === "active" ||
-          calibration === "active"
-        ) {
-          return false;
-        }
         return true;
       },
       switchProfileGuard: (context: any, event: any) => {
@@ -608,7 +442,7 @@ function MyPOCUI() {
     <div className="StateNode">
       <h1>My POC</h1>
 
-      <button onClick={() => service.send(["clutch", "key_down"])}>
+      {/* <button onClick={() => service.send(["clutch", "key_down"])}>
         Hold clutch
       </button>
       <button onClick={() => service.send(["clutch", "key_up"])}>
@@ -621,7 +455,7 @@ function MyPOCUI() {
 
       <button onClick={() => service.send(["customizeUI", "keyMapping"])}>
         Do any keyMapping.
-      </button>
+      </button> */}
     </div>
   );
 }
