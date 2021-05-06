@@ -9,6 +9,8 @@ import {
   actions,
 } from "xstate";
 
+const { choose, log } = actions;
+
 const { respond, raise } = actions;
 
 //@ts-nocheck
@@ -63,65 +65,203 @@ const requestLocks = async (abortController: AbortController | undefined) => {
   }
 };
 
-const nariUltimateStateMachine = Machine({
-  id: "device",
-  type: "parallel",
-  initial: "idle",
-  context: {
-    configuration: {},
-    spatialAudioDemo: {
-      abortController: new AbortController(),
-    },
+const maybeDoThese = choose([
+  {
+    cond: "txhSpatialAudioPlaying_GUARD",
+    actions: [
+      // selected when "cond1" is true
+    ],
   },
-  states: {
-    soundUI: {
-      initial: "idle",
-      states: {
-        idle: {
-          on: {
-            thxSpatialAudioDemo: "requestingLock",
-          },
+  {
+    cond: "cond2",
+    actions: [
+      // selected when "cond1" is false and "cond2" is true
+      log((context, event) => {
+        /* ... */
+      }),
+      log("another action"),
+    ],
+  },
+  {
+    cond: (context, event) => {
+      // some condition
+      return false;
+    },
+    actions: [
+      // selected when "cond1" and "cond2" are false and the inline `cond` is true
+      (context, event) => {
+        // some other action
+      },
+    ],
+  },
+  {
+    actions: [
+      log("fall-through action"),
+      // selected when "cond1", "cond2", and "cond3" are false
+    ],
+  },
+]);
+
+const nariUltimateStateMachine = Machine(
+  {
+    id: "device",
+    type: "parallel",
+    initial: "idle",
+    context: {
+      soundUI: {
+        spatialAudioDemo: {
+          abortController: new AbortController(),
+          thxSpatialAudioDemo: "stereo",
+          thxSpatialAudioDemoSteroPlaying: false,
+          thxSpatialAudioDemoSurrondSoundPlaying: false,
         },
-        requestingLock: {
-          invoke: {
-            id: "getLocks",
-            src: (context) =>
-              requestLocks(context.spatialAudioDemo.abortController),
-            onDone: {
-              target: "playing",
+      },
+      mixerUI: {
+        thxSpatialAudioStatus: true,
+        thxSpatialAduioPlaying: false,
+      },
+    },
+    states: {
+      soundUI: {
+        initial: "idle",
+        states: {
+          idle: {
+            on: {
+              thxSpatialAudioDemo: "requestingLock",
             },
-            onError: {
-              target: "idle",
-              actions: () => {
-                console.log("error");
+          },
+          requestingLock: {
+            invoke: {
+              id: "getLocks",
+              src: (context) =>
+                requestLocks(context.soundUI.spatialAudioDemo.abortController),
+              onDone: [
+                {
+                  target: "stereoPlaying",
+                  cond: (context) => {
+                    return (
+                      context.soundUI.spatialAudioDemo.thxSpatialAudioDemo ===
+                      "stereo"
+                    );
+                  },
+                  actions: ["thxSpatialAudioDemoStereo_TOOGLE"]
+                },
+                {
+                  target: "surroundSoundPlaying",
+                  actions: ["thxSpatialAudioDemoStereo_TOOGLE"]
+                },
+              ],
+              onError: {
+                target: "idle",
+                actions: () => {
+                  console.log("error");
+                },
+              },
+            },
+          },
+          stereoPlaying: {
+            on: {
+              thxSpatialAudioDemo_COMPLETE: {
+                target: "idle",
+                actions: ["thxSpatialAudioDemoStereo_TOOGLE"]
+              },
+            },
+          },
+          surroundSoundPlaying: {
+            on: {
+              thxSpatialAudioDemo_COMPLETE: {
+                target: "idle",
+                actions: ["thxSpatialAudioDemoStereo_TOOGLE"]
               },
             },
           },
         },
-        playing: {
-          on: {
-            thxSpatialAudioDemo_COMPLETE: "idle",
-          },
-        },
       },
-    },
-    mixerUI: {
-      initial: "idle",
-      states: {
-        idle: {
-          on: {
-            thxSpatialAudioStatus: "enable",
+      mixerUI: {
+        initial: "idle",
+        states: {
+          idle: {
+            on: {
+              thxSpatialAudioStatus: {
+                target: "thxSpatialAudioStatus",
+                actions: ["thxSpatialAudioStatus_TOOGLE"],
+              },
+              thxSpatialAudioCalibration: {
+                target: "thxSpatialAudioCalibration",
+                cond: "txhSpatialAudioPlayingFromMixerUI_GUARD",
+                actions: ["thxSpatialAudioCalibration_TOOGLE"],
+              },
+            },
           },
-        },
-        enable: {
-          on: {
-            thxSpatialAudioStatus_ENABLE: "idle",
+          thxSpatialAudioStatus: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          thxSpatialAudioCalibration: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                  actions: ["thxSpatialAudioCalibration_TOOGLE"],
+                },
+              ],
+            },
           },
         },
       },
     },
   },
-});
+  {
+    actions: {
+      thxSpatialAudioStatus_TOOGLE: (context, event) => {
+        console.log(event);
+        context.mixerUI.thxSpatialAudioStatus = !context.mixerUI
+          .thxSpatialAudioStatus;
+      },
+      thxSpatialAudioDemoStereo_TOOGLE: (context, event) => {
+        context.soundUI.spatialAudioDemo.thxSpatialAudioDemoSteroPlaying = !context
+          .soundUI.spatialAudioDemo.thxSpatialAudioDemoSteroPlaying;
+      },
+      thxSpatialAudioDemoSurroundSound_TOOGLE: (context, event) => {
+        context.soundUI.spatialAudioDemo.thxSpatialAudioDemoSurrondSoundPlaying = !context
+          .soundUI.spatialAudioDemo.thxSpatialAudioDemoSurrondSoundPlaying;
+      },
+      thxSpatialAudioCalibration_TOOGLE: (context, event) => {
+        context.mixerUI.thxSpatialAduioPlaying = !context.mixerUI
+          .thxSpatialAduioPlaying;
+      },
+    },
+    guards: {
+      txhSpatialAudioPlaying_GUARD: (context, event) => {
+        if (
+          context.soundUI.spatialAudioDemo.thxSpatialAudioDemoSteroPlaying ||
+          context.soundUI.spatialAudioDemo
+            .thxSpatialAudioDemoSurrondSoundPlaying ||
+          context.mixerUI.thxSpatialAduioPlaying
+        ) {
+          return false;
+        }
+        return true;
+      },
+
+      txhSpatialAudioPlayingFromMixerUI_GUARD: (context) => {
+        if (
+          context.soundUI.spatialAudioDemo.thxSpatialAudioDemoSteroPlaying ||
+          context.soundUI.spatialAudioDemo
+            .thxSpatialAudioDemoSurrondSoundPlaying
+        ) {
+          return false;
+        }
+        return true;
+      },
+    },
+  }
+);
 
 function MyPOCUI() {
   const service = interpret(nariUltimateStateMachine, { devTools: true })
