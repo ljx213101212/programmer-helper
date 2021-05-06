@@ -3,6 +3,7 @@ import * as ReactDOM from "react-dom";
 import { createMachine, assign, send, Machine, spawn, interpret } from "xstate";
 import { useMachine } from "@xstate/react";
 
+
 function StateNode() {
 
     const timeOfDayMachine = Machine({
@@ -39,7 +40,7 @@ function StateNode() {
 
 
     const timeOfDayService = interpret(
-        timeOfDayMachine.withContext({  time: new Date(Date.now()) })
+        timeOfDayMachine.withContext({  time: new Date(Date.now()) }),{ devTools: true }
       ).onTransition((state) => console.log(state.value));
     const startTheDay = () => {
         timeOfDayService.start();

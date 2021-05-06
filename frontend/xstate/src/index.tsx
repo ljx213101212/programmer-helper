@@ -8,7 +8,7 @@ import { useMachine } from "@xstate/react";
 import StateNode from "./components/StateNode";
 import InvokingService from "./components/InvokingService";
 import Transition from "./components/Transition";
-// import LatestPOCUI from "./modules/LatestPOC";
+import LatestPOCUI from "./modules/LatestPOC";
 import MyPOCUI from "./modules/MyPOC";
 const { respond, raise} = actions;
 
@@ -23,10 +23,10 @@ function App() {
   return (
     <div className="App">
       {/* <LatestPOCUI></LatestPOCUI> */}
-      {/* <MyPOCUI></MyPOCUI> */}
-      <Transition></Transition>
-      {/* <StateNode></StateNode>
-      <InvokingService></InvokingService> */}
+      <MyPOCUI></MyPOCUI>
+      {/* <Transition></Transition> */}
+      {/* <StateNode></StateNode> */}
+      {/* <InvokingService></InvokingService> */}
     </div>
   );
 }

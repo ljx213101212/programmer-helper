@@ -55,7 +55,7 @@ function InvokingService() {
     },
   });
 
-  const service = interpret(parentMachine).onTransition((state) =>
+  const service = interpret(parentMachine,{ devTools: true }).onTransition((state) =>
     console.log(state.context)
   );
 
@@ -106,7 +106,7 @@ function InvokingService() {
     }
   );
 
-  const authService = interpret(authClientMachine).onTransition((state) =>
+  const authService = interpret(authClientMachine, { devTools: true }).onTransition((state) =>
     console.log(state.context)
   );
 

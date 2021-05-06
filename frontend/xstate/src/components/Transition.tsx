@@ -49,17 +49,17 @@ function Trasition() {
         }
       );
       
-      const gameService = interpret(gameMachine)
+      const gameService = interpret(gameMachine,{ devTools: true })
         .onTransition((state) => console.log(state.value))
         .start();
 
     
     return (
         <div className="Trasition">
-             <h1>Trasition</h1>
+             <h1>Transition</h1>
             <button onClick= {()=> {
                gameService.send('AWARD_POINTS');
-            }}>Start the Trasition</button>
+            }}>Start the Transition</button>
         </div>
       );
 }
