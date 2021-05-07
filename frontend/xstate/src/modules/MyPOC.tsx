@@ -43,7 +43,6 @@ const requestLocks = async (abortController: AbortController | undefined) => {
                       abortController?.signal?.addEventListener("abort", () => {
                         resolve(1);
                       });
-
                       outterResolve(1);
                     });
                   } else {
@@ -65,42 +64,6 @@ const requestLocks = async (abortController: AbortController | undefined) => {
   }
 };
 
-const maybeDoThese = choose([
-  {
-    cond: "txhSpatialAudioPlaying_GUARD",
-    actions: [
-      // selected when "cond1" is true
-    ],
-  },
-  {
-    cond: "cond2",
-    actions: [
-      // selected when "cond1" is false and "cond2" is true
-      log((context, event) => {
-        /* ... */
-      }),
-      log("another action"),
-    ],
-  },
-  {
-    cond: (context, event) => {
-      // some condition
-      return false;
-    },
-    actions: [
-      // selected when "cond1" and "cond2" are false and the inline `cond` is true
-      (context, event) => {
-        // some other action
-      },
-    ],
-  },
-  {
-    actions: [
-      log("fall-through action"),
-      // selected when "cond1", "cond2", and "cond3" are false
-    ],
-  },
-]);
 
 const nariUltimateStateMachine = Machine(
   {
@@ -108,157 +71,394 @@ const nariUltimateStateMachine = Machine(
     type: "parallel",
     initial: "idle",
     context: {
-      soundUI: {
-        spatialAudioDemo: {
-          abortController: new AbortController(),
-          thxSpatialAudioDemo: "stereo",
-          thxSpatialAudioDemoSteroPlaying: false,
-          thxSpatialAudioDemoSurrondSoundPlaying: false,
-        },
+      mixer: {
+        abortController: undefined,
+        targetState:"",
       },
-      mixerUI: {
-        thxSpatialAudioStatus: true,
-        thxSpatialAduioPlaying: false,
+      enhancement: {
+        abortController: undefined,
+        targetState:"",
+      },
+      equalizer: {
+        abortController: undefined,
+        targetState:"",
       },
     },
     states: {
-      soundUI: {
+      mixer: {
         initial: "idle",
         states: {
           idle: {
+            entry: (context) => {
+              if (context.mixer.abortController) {
+                context.mixer.abortController?.abort();
+              }
+            },
             on: {
-              thxSpatialAudioDemo: "requestingLock",
+              switchOffSpatialAudioSetting: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    mixer: {
+                      abortController: new AbortController(),
+                      targetState: "switchOffSpatialAudioSetting",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
             },
           },
           requestingLock: {
             invoke: {
               id: "getLocks",
               src: (context) =>
-                requestLocks(context.soundUI.spatialAudioDemo.abortController),
+                requestLocks(context.mixer.abortController),
               onDone: [
                 {
-                  target: "stereoPlaying",
-                  cond: (context) => {
-                    return (
-                      context.soundUI.spatialAudioDemo.thxSpatialAudioDemo ===
-                      "stereo"
-                    );
+                  target: "switchOffSpatialAudioSetting",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.mixer.targetState === "switchOffSpatialAudioSetting";
                   },
-                  actions: ["thxSpatialAudioDemoStereo_TOOGLE"]
-                },
-                {
-                  target: "surroundSoundPlaying",
-                  actions: ["thxSpatialAudioDemoStereo_TOOGLE"]
                 },
               ],
               onError: {
                 target: "idle",
                 actions: () => {
-                  console.log("error");
+                  console.log("requestingLock error");
                 },
               },
             },
           },
-          stereoPlaying: {
+          switchOffSpatialAudioSetting: {
             on: {
-              thxSpatialAudioDemo_COMPLETE: {
-                target: "idle",
-                actions: ["thxSpatialAudioDemoStereo_TOOGLE"]
-              },
-            },
-          },
-          surroundSoundPlaying: {
-            on: {
-              thxSpatialAudioDemo_COMPLETE: {
-                target: "idle",
-                actions: ["thxSpatialAudioDemoStereo_TOOGLE"]
-              },
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
             },
           },
         },
       },
-      mixerUI: {
+      enhancement: {
         initial: "idle",
         states: {
           idle: {
-            on: {
-              thxSpatialAudioStatus: {
-                target: "thxSpatialAudioStatus",
-                actions: ["thxSpatialAudioStatus_TOOGLE"],
-              },
-              thxSpatialAudioCalibration: {
-                target: "thxSpatialAudioCalibration",
-                cond: "txhSpatialAudioPlayingFromMixerUI_GUARD",
-                actions: ["thxSpatialAudioCalibration_TOOGLE"],
-              },
+            entry: (context) => {
+              if (context.enhancement.abortController) {
+                context.enhancement.abortController?.abort();
+              }
             },
-          },
-          thxSpatialAudioStatus: {
             on: {
-              completed: [
-                {
-                  target: "idle",
-                },
-              ],
-            },
-          },
-          thxSpatialAudioCalibration: {
-            on: {
-              completed: [
-                {
-                  target: "idle",
-                  actions: ["thxSpatialAudioCalibration_TOOGLE"],
-                },
-              ],
-            },
-          },
-        },
-      },
-    },
-  },
-  {
-    actions: {
-      thxSpatialAudioStatus_TOOGLE: (context, event) => {
-        console.log(event);
-        context.mixerUI.thxSpatialAudioStatus = !context.mixerUI
-          .thxSpatialAudioStatus;
-      },
-      thxSpatialAudioDemoStereo_TOOGLE: (context, event) => {
-        context.soundUI.spatialAudioDemo.thxSpatialAudioDemoSteroPlaying = !context
-          .soundUI.spatialAudioDemo.thxSpatialAudioDemoSteroPlaying;
-      },
-      thxSpatialAudioDemoSurroundSound_TOOGLE: (context, event) => {
-        context.soundUI.spatialAudioDemo.thxSpatialAudioDemoSurrondSoundPlaying = !context
-          .soundUI.spatialAudioDemo.thxSpatialAudioDemoSurrondSoundPlaying;
-      },
-      thxSpatialAudioCalibration_TOOGLE: (context, event) => {
-        context.mixerUI.thxSpatialAduioPlaying = !context.mixerUI
-          .thxSpatialAduioPlaying;
-      },
-    },
-    guards: {
-      txhSpatialAudioPlaying_GUARD: (context, event) => {
-        if (
-          context.soundUI.spatialAudioDemo.thxSpatialAudioDemoSteroPlaying ||
-          context.soundUI.spatialAudioDemo
-            .thxSpatialAudioDemoSurrondSoundPlaying ||
-          context.mixerUI.thxSpatialAduioPlaying
-        ) {
-          return false;
-        }
-        return true;
-      },
+              bassboost: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    enhancement: {
+                      abortController: new AbortController(),
+                      targetState: "bassboost",
+                    },
+                  }
+                }),
+                target: "requestingLock"
 
-      txhSpatialAudioPlayingFromMixerUI_GUARD: (context) => {
-        if (
-          context.soundUI.spatialAudioDemo.thxSpatialAudioDemoSteroPlaying ||
-          context.soundUI.spatialAudioDemo
-            .thxSpatialAudioDemoSurrondSoundPlaying
-        ) {
-          return false;
+              },
+              switchOffBassBoostSetting: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    enhancement: {
+                      abortController: new AbortController(),
+                      targetState: "switchOffBassBoostSetting",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
+
+              voiceClarity: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    enhancement: {
+                      abortController: new AbortController(),
+                      targetState: "voiceClarity",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
+              switchOffVoiceClaritySetting: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    enhancement: {
+                      abortController: new AbortController(),
+                      targetState: "switchOffVoiceClaritySetting",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
+
+              soundNormalization: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    enhancement: {
+                      abortController: new AbortController(),
+                      targetState: "soundNormalization",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
+              switchOffSoundNormalizationSetting: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    enhancement: {
+                      abortController: new AbortController(),
+                      targetState: "switchOffSoundNormalizationSetting",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
+
+              hapticIntensity: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    enhancement: {
+                      abortController: new AbortController(),
+                      targetState: "hapticIntensity",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
+              switchOffHapticIntensitySetting: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    enhancement: {
+                      abortController: new AbortController(),
+                      targetState: "switchOffHapticIntensitySetting",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
+
+
+            },
+          },
+          requestingLock: {
+            invoke: {
+              id: "getLocks",
+              src: (context) =>
+                requestLocks(context.enhancement.abortController),
+              onDone: [
+                {
+                  target: "bassboost",
+                  cond: (context, event, meta) => {
+                   console.log(meta)
+                    return context.enhancement.targetState === "bassboost";
+                  },
+                },
+                {
+                  target: "switchOffBassBoostSetting",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.enhancement.targetState === "switchOffBassBoostSetting";
+                  },
+                },
+                {
+                  target: "voiceClarity",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.enhancement.targetState === "voiceClarity";
+                  },
+                },
+                {
+                  target: "switchOffVoiceClaritySetting",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.enhancement.targetState === "switchOffVoiceClaritySetting";
+                  },
+                },
+                {
+                  target: "soundNormalization",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.enhancement.targetState === "soundNormalization";
+                  },
+                },
+                {
+                  target: "switchOffSoundNormalizationSetting",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.enhancement.targetState === "switchOffSoundNormalizationSetting";
+                  },
+                }, 
+
+                {
+                  target: "hapticIntensity",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.enhancement.targetState === "hapticIntensity";
+                  },
+                },
+                {
+                  target: "switchOffHapticIntensitySetting",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.enhancement.targetState === "switchOffHapticIntensitySetting";
+                  },
+                }, 
+              ],
+              onError: {
+                target: "idle",
+                actions: () => {
+                  console.log("requestingLock error");
+                },
+              },
+            },
+          },
+          bassboost: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          },
+          switchOffBassBoostSetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          },
+          voiceClarity: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          },
+          switchOffVoiceClaritySetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          },
+          soundNormalization: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          },
+          switchOffSoundNormalizationSetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          },
+          hapticIntensity: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          },
+          switchOffHapticIntensitySetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          }
         }
-        return true;
       },
+      equalizer: {
+        initial: "idle",
+        states: {
+          idle: {
+            entry: (context) => {
+              if (context.equalizer.abortController) {
+                context.equalizer.abortController?.abort();
+              }
+            },
+            on: {
+              equalizer: {
+                actions: assign<any>(ctx => {
+                  return {
+                    ...ctx,
+                    equalizer: {
+                      abortController: new AbortController(),
+                      targetState: "equalizer",
+                    },
+                  }
+                }),
+                target: "requestingLock"
+              },
+            },
+          },
+          requestingLock: {
+            invoke: {
+              id: "getLocks",
+              src: (context) =>
+                requestLocks(context.equalizer.abortController),
+              onDone: [
+                {
+                  target: "equalizer",
+                  cond: (context, event, meta) => {
+                    console.log(meta)
+                    return context.equalizer.targetState === "equalizer";
+                  },
+                },
+              ],
+              onError: {
+                target: "idle",
+                actions: () => {
+                  console.log("requestingLock error");
+                },
+              },
+            },
+          },
+          equalizer: {
+            on: {
+              completed: [
+                {
+                  target: "idle"
+                }
+              ]
+            }
+          }
+        },
+      }
     },
   }
 );
