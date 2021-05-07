@@ -694,6 +694,15 @@ const nariUltimateStateMachine = Machine(
                 }),
                 target: "requestingLock",
               },
+              micPreview: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "micPreview",
+                  },
+                }),
+                target: "requestingLock",
+              },
               sidetone: {
                 actions: assign<any>({
                   mic: {
@@ -771,6 +780,12 @@ const nariUltimateStateMachine = Machine(
                   },
                 },
                 {
+                  target: "micPreview",
+                  cond: (context) => {
+                    return context.mic.targetState === "micPreview";
+                  },
+                },
+                {
                   target: "sidetone",
                   cond: (context) => {
                     return context.mic.targetState === "sidetone";
@@ -838,6 +853,15 @@ const nariUltimateStateMachine = Machine(
             },
           },
           switchOffSensitivitySetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          micPreview: {
             on: {
               completed: [
                 {
