@@ -83,6 +83,18 @@ const nariUltimateStateMachine = Machine(
         abortController: undefined,
         targetState:"",
       },
+      lighting: {
+        abortController: undefined,
+        targetState: "",
+      },
+      power: {
+        abortController: undefined,
+        targetState: "",
+      },
+      mic: {
+        abortController: undefined,
+        targetState: "",
+      }
     },
     states: {
       mixer: {
@@ -458,6 +470,428 @@ const nariUltimateStateMachine = Machine(
             }
           }
         },
+      },
+      lighting: {
+        initial: "idle",
+        states: {
+          idle: {
+            entry: (context) => {
+              if (context.lighting.abortController) {
+                (context.lighting.abortController as any)?.abort();
+              }
+            },
+            on: {
+              brightness: {
+                actions: assign<any>({
+                  lighting: {
+                    abortController: new AbortController(),
+                    targetState: "brightness",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              switchOffSetting: {
+                actions: assign<any>({
+                  lighting: {
+                    abortController: new AbortController(),
+                    targetState: "switchOffSetting",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              effects: {
+                actions: assign<any>({
+                  lighting: {
+                    abortController: new AbortController(),
+                    targetState: "effects",
+                  },
+                }),
+                target: "requestingLock",
+              },
+            },
+          },
+          requestingLock: {
+            invoke: {
+              id: "getLocks",
+              src: (context) => requestLocks(context.lighting.abortController),
+              onDone: [
+                {
+                  target: "brightness",
+                  cond: (context) => {
+                    return context.lighting.targetState === "brightness";
+                  },
+                },
+                {
+                  target: "switchOffSetting",
+                  cond: (context) => {
+                    return context.lighting.targetState === "switchOffSetting";
+                  },
+                },
+                {
+                  target: "effects",
+                  cond: (context) => {
+                    return context.lighting.targetState === "effects";
+                  },
+                },
+                {
+                  target: "idle",
+                },
+              ],
+              onError: {
+                target: "idle",
+              },
+            },
+          },
+          brightness: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          switchOffSetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          effects: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+        },
+      },
+      power: {
+        initial: "idle",
+        states: {
+          idle: {
+            entry: (context) => {
+              if (context.power.abortController) {
+                (context.power.abortController as any)?.abort();
+              }
+            },
+            on: {
+              powerSaving: {
+                actions: assign<any>({
+                  power: {
+                    abortController: new AbortController(),
+                    targetState: "powerSaving",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              switchOffSetting: {
+                actions: assign<any>({
+                  power: {
+                    abortController: new AbortController(),
+                    targetState: "switchOffSetting",
+                  },
+                }),
+                target: "requestingLock",
+              },
+            },
+          },
+          requestingLock: {
+            invoke: {
+              id: "getLocks",
+              src: (context) => requestLocks(context.power.abortController),
+              onDone: [
+                {
+                  target: "powerSaving",
+                  cond: (context) => {
+                    return context.power.targetState === "powerSaving";
+                  },
+                },
+                {
+                  target: "switchOffSetting",
+                  cond: (context) => {
+                    return context.power.targetState === "switchOffSetting";
+                  },
+                },
+                {
+                  target: "idle",
+                },
+              ],
+              onError: {
+                target: "idle",
+              },
+            },
+          },
+          powerSaving: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          switchOffSetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+        },
+      },
+      mic: {
+        initial: "idle",
+        states: {
+          idle: {
+            entry: (context) => {
+              if (context.mic.abortController) {
+                (context.mic.abortController as any)?.abort();
+              }
+            },
+            on: {
+              switchOffMicroPhoneSetting: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "switchOffMicroPhoneSetting",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              volume: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "volume",
+                  },
+                }),
+                target: "requestingLock",
+              },
+             
+              sensitivity: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "sensitivity",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              switchOffSensitivitySetting: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "switchOffSensitivitySetting",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              sidetone: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "sidetone",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              switchOffSidetoneSetting: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "switchOffSidetoneSetting",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              volumeNormalization: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "volumeNormalization",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              ambientNoiseReduction: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "ambientNoiseReduction",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              vocalClarity: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "vocalClarity",
+                  },
+                }),
+                target: "requestingLock",
+              }
+            },
+          },
+          requestingLock: {
+            invoke: {
+              id: "getLocks",
+              src: (context) => requestLocks(context.mic.abortController),
+              onDone: [
+                {
+                  target: "switchOffMicroPhoneSetting",
+                  cond: (context) => {
+                    return context.mic.targetState === "switchOffMicroPhoneSetting";
+                  },
+                },
+                {
+                  target: "volume",
+                  cond: (context) => {
+                    return context.mic.targetState === "volume";
+                  },
+                },
+                {
+                  target: "sensitivity",
+                  cond: (context) => {
+                    return context.mic.targetState === "sensitivity";
+                  },
+                },
+                {
+                  target: "switchOffSensitivitySetting",
+                  cond: (context) => {
+                    return context.mic.targetState === "switchOffSensitivitySetting";
+                  },
+                },
+                {
+                  target: "sidetone",
+                  cond: (context) => {
+                    return context.mic.targetState === "sidetone";
+                  },
+                },
+                {
+                  target: "switchOffSidetoneSetting",
+                  cond: (context) => {
+                    return context.mic.targetState === "switchOffSidetoneSetting";
+                  },
+                },
+                {
+                  target: "volumeNormalization",
+                  cond: (context) => {
+                    return context.mic.targetState === "volumeNormalization";
+                  },
+                },
+                {
+                  target: "ambientNoiseReduction",
+                  cond: (context) => {
+                    return context.mic.targetState === "ambientNoiseReduction";
+                  },
+                },
+                {
+                  target: "vocalClarity",
+                  cond: (context) => {
+                    return context.mic.targetState === "vocalClarity";
+                  },
+                },
+                {
+                  target: "idle",
+                },
+              ],
+              onError: {
+                target: "idle",
+              },
+            },
+          },
+
+          switchOffMicroPhoneSetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          volume: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          sensitivity: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          switchOffSensitivitySetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          sidetone: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          switchOffSidetoneSetting: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          volumeNormalization: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          ambientNoiseReduction: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+          vocalClarity: {
+            on: {
+              completed: [
+                {
+                  target: "idle",
+                },
+              ],
+            },
+          },
+        }
       }
     },
   }
