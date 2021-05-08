@@ -1,5 +1,5 @@
 # Why
-**查缺补漏**
+To understand React concept in a praticial way.
 
 
 * [props-drilling-vs-useContext](##props-drilling-vs-useContext)  

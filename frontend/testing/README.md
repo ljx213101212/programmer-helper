@@ -1,3 +1,6 @@
+# Why
+To understand frontend testing toolchain concept in a praticial way.
+
 ## Reference  
 
 https://github.com/vjwilson/enzyme-example-jest/blob/master/package.json  
