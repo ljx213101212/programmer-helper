@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "jsx": "react",
+        "esModuleInterop": true,
+        "baseUrl": "./",
+        "paths": {
+            "src/*": ["src/*"],
+            "tests/*": ["__tests__/*"]
+          }
+    },
+}
