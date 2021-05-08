@@ -37,4 +37,18 @@ describe('<MyComponent />', () => {
     wrapper.find('button').simulate('click');
     expect(onButtonClick).to.have.property('callCount', 1);
   });
+
+  it('react-test-renderer/shallow', ()=>{
+    // in your test:
+    const renderer = new ShallowRenderer();
+    renderer.render(<SimpleContainment><span className="heading">Title</span></SimpleContainment>);
+    const result = renderer.getRenderOutput();
+
+    console.log(result);
+
+    jestExpect(result.type).toBe('div');
+    jestExpect(result.props.children).toEqual(
+      <span className="heading">Title</span>
+    );
+  });
 });
