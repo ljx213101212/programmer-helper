@@ -14,57 +14,136 @@ const { choose, log } = actions;
 const { respond, raise } = actions;
 
 //@ts-nocheck
-const requestLocks = async (abortController: AbortController | undefined) => {
-  if (abortController) {
-    const { held } = await navigator.locks.query();
-
-    const runningExclusiveLock = held?.find(
-      (runningLock: any) =>
-        runningLock.name === "rzDoorLock" && runningLock.mode === "exclusive"
-    );
-
-    if (runningExclusiveLock) {
-      return Promise.reject(false);
-    }
-
-    return new Promise((outterResolve, outterReject) => {
-      window.navigator.locks
-        .request(
-          "rz_global_lock",
-          { mode: "shared", ifAvailable: true },
-          (globalLock: any) => {
-            if (globalLock) {
-              return window.navigator.locks.request(
-                "rz_device_lock",
-                { mode: "shared", ifAvailable: true },
-                (deviceLock: any) => {
-                  if (deviceLock) {
-                    return new Promise((resolve) => {
-                      abortController?.signal?.addEventListener("abort", () => {
-                        console.log("[abort] --- ");
-                        resolve(1);
-                      });
-                      outterResolve(1);
-                    });
-                  } else {
-                    return Promise.reject(0);
-                  }
-                }
-              );
-            } else {
-              return Promise.reject(0);
-            }
-          }
-        )
-        .catch((_result: any) => {
-          outterReject(0);
-        });
-    });
-  } else {
-    return Promise.reject(0);
+declare global {
+  interface Navigator {
+    readonly locks: any;
   }
+}
+
+enum LockMode {
+  "shared" = "shared",
+  "exclusive" = "exclusive",
+}
+
+const GLOBAL_LOCK_NAME = "rz_global_lock";
+const DEVICE_LOCK_NAME = "rz_doorLock_pid_eid_cid";
+
+const REQUESTING_LOCK = "requestingLock";
+const GET_LOCKS = "getLocks";
+
+const requestLocks = async (timerTick: number, globalLockMode: LockMode, deviceLockMode: LockMode) => {
+  return new Promise((outterResolve, outterReject) => {
+    window.navigator.locks
+      .request(
+        GLOBAL_LOCK_NAME,
+        { mode: globalLockMode, ifAvailable: true },
+        (globalLock: any) => {
+          if (globalLock) {
+            return window.navigator.locks.request(
+              DEVICE_LOCK_NAME,
+              { mode: deviceLockMode, ifAvailable: true },
+              (deviceLock: any) => {
+                if (deviceLock) {
+                  return new Promise((resolve) => {
+                    outterResolve({ timerTick, resolve });
+                  });
+                } else {
+                  return Promise.reject(0);
+                }
+              }
+            );
+          } else {
+            return Promise.reject(0);
+          }
+        }
+      )
+      .catch((_result: any) => {
+        outterReject({ timerTick });
+      });
+  });
 };
 
+
+
+// const stateReadLock = (state, initialState, subStates) => {
+
+
+//    const idleSubStatesOn = () => {
+//      let idleSubState: any = {};
+//      subStates.forEach((element:any) => {
+//         let subStateKey = element;
+//         let subStateValue = {
+//           actions: assign<any>((ctx) => {
+//             return {
+//               ...ctx,
+//               [state]: {
+//                 targetState: subStateKey,
+//               },
+//             };
+//           }),
+//           target: REQUESTING_LOCK,
+//         };
+//         // idleSubState = {...idleSubState, [subStateKey]:subStateValue}
+//         idleSubState[subStateKey] = subStateValue;
+//      });
+//    }
+
+//    const requestingLockOnDone = () => {
+//      let onDoneArray:Array<any> = [];
+  
+//      subStates.forEach((element:any) => {
+//       let onDoneItem:any = {
+//         target: element,
+//         actions: assign((context, event) => {
+//           return {
+//             [state]: {
+//               ...context[state],
+//               promiseResolve: event.data.resolve,
+//             },
+//           };
+//         }),
+//         cond: (context) => {
+//           return context[state].targetState === element;
+//         },
+//       };
+//       onDoneArray.push(onDoneItem);
+//      });
+//      return onDoneArray;
+//    }
+
+//    const requestingLockOnError = () => {
+//      let onErrorObject = {
+//         target: "idle",
+//         actions: () => {
+//           console.log("requestingLock error");
+//         }
+//      };
+//      return onErrorObject;
+//    }
+ 
+//     return {
+//       [state]: {
+//         initial: initialState,
+//         idle: {
+//           entry: (context:any) => {
+//             if (context[state].promiseResolve) {
+//               context[state].promiseResolve(1);
+//             }
+//           },
+//           on: idleSubStatesOn(),
+//         },
+//         requestingLock: {
+//           invoke: {
+//             id: GET_LOCKS,
+//             src: (_context, event) =>
+//               requestLocks(event.timerTick, LockMode.shared, LockMode.shared),
+//             onDone: requestingLockOnDone(),
+//             onError: requestingLockOnError()
+//           },
+//         },
+//       }
+//     }
+// }
 
 const nariUltimateStateMachine = Machine(
   {
@@ -74,30 +153,35 @@ const nariUltimateStateMachine = Machine(
     context: {
       isMicPreview: false,
       mixer: {
-        abortController: undefined,
-        targetState:"",
+        promiseResolve: undefined,
+        targetState: "",
       },
       enhancement: {
-        abortController: undefined,
-        targetState:"",
+        promiseResolve: undefined,
+        targetState: "",
       },
       equalizer: {
-        abortController: undefined,
-        targetState:"",
+        promiseResolve: undefined,
+        targetState: "",
       },
       lighting: {
-        abortController: undefined,
+        promiseResolve: undefined,
         targetState: "",
       },
       power: {
-        abortController: undefined,
+        promiseResolve: undefined,
         targetState: "",
       },
       mic: {
-        abortController: undefined,
+        promiseResolve: undefined,
         targetState: "",
         isMicOn: true,
-      }
+      },
+    },
+    on: {
+      "*": {
+        actions: ["ignoreTask"],
+      },
     },
     states: {
       mixer: {
@@ -105,37 +189,46 @@ const nariUltimateStateMachine = Machine(
         states: {
           idle: {
             entry: (context) => {
-              if (context.mixer.abortController) {
-                context.mixer.abortController?.abort();
+              if (context.mixer.promiseResolve) {
+                context.mixer.promiseResolve(1);
               }
             },
             on: {
               switchOffSpatialAudioSetting: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     mixer: {
-                      abortController: new AbortController(),
                       targetState: "switchOffSpatialAudioSetting",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
             },
           },
           requestingLock: {
             invoke: {
               id: "getLocks",
-              src: (context) =>
-                requestLocks(context.mixer.abortController),
+              src: (context, event) =>
+                requestLocks(event.timerTick, LockMode.shared, LockMode.shared),
               onDone: [
                 {
                   target: "switchOffSpatialAudioSetting",
                   cond: (context, event, meta) => {
-                    console.log(meta)
-                    return context.mixer.targetState === "switchOffSpatialAudioSetting";
+                    console.log(meta);
+                    return (
+                      context.mixer.targetState === "switchOffSpatialAudioSetting"
+                    );
                   },
+                  actions: assign<any>((context, event) => {
+                    return {
+                      mixer: {
+                        ...context.mixer,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
               ],
               onError: {
@@ -148,7 +241,7 @@ const nariUltimateStateMachine = Machine(
           },
           switchOffSpatialAudioSetting: {
             on: {
-              completed: [
+              switchOffSpatialAudioSettingCompleted: [
                 {
                   target: "idle",
                 },
@@ -162,178 +255,244 @@ const nariUltimateStateMachine = Machine(
         states: {
           idle: {
             entry: (context) => {
-              if (context.enhancement.abortController) {
-                context.enhancement.abortController?.abort();
+              if (context.enhancement.promiseResolve) {
+                context.enhancement.promiseResolve(1);
               }
             },
             on: {
               bassboost: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     enhancement: {
-                      abortController: new AbortController(),
                       targetState: "bassboost",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
-
+                target: "requestingLock",
               },
               switchOffBassBoostSetting: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     enhancement: {
-                      abortController: new AbortController(),
                       targetState: "switchOffBassBoostSetting",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
-
               voiceClarity: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     enhancement: {
-                      abortController: new AbortController(),
                       targetState: "voiceClarity",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
               switchOffVoiceClaritySetting: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     enhancement: {
-                      abortController: new AbortController(),
                       targetState: "switchOffVoiceClaritySetting",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
-
               soundNormalization: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     enhancement: {
-                      abortController: new AbortController(),
                       targetState: "soundNormalization",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
               switchOffSoundNormalizationSetting: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     enhancement: {
-                      abortController: new AbortController(),
                       targetState: "switchOffSoundNormalizationSetting",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
-
               hapticIntensity: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     enhancement: {
-                      abortController: new AbortController(),
                       targetState: "hapticIntensity",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
               switchOffHapticIntensitySetting: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     enhancement: {
-                      abortController: new AbortController(),
                       targetState: "switchOffHapticIntensitySetting",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
-
-
             },
           },
           requestingLock: {
             invoke: {
               id: "getLocks",
-              src: (context) =>
-                requestLocks(context.enhancement.abortController),
+              src: (context, event) =>
+                requestLocks(event.timerTick, LockMode.shared, LockMode.shared),
               onDone: [
                 {
                   target: "bassboost",
+                  actions: assign((context, event) => {
+                    return {
+                      enhancement: {
+                        ...context.enhancement,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                   console.log(meta)
+                    console.log(meta);
                     return context.enhancement.targetState === "bassboost";
                   },
                 },
                 {
                   target: "switchOffBassBoostSetting",
+                  actions: assign((context, event) => {
+                    return {
+                      enhancement: {
+                        ...context.enhancement,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                    console.log(meta)
-                    return context.enhancement.targetState === "switchOffBassBoostSetting";
+                    console.log(meta);
+                    return (
+                      context.enhancement.targetState ===
+                      "switchOffBassBoostSetting"
+                    );
                   },
                 },
                 {
                   target: "voiceClarity",
+                  actions: assign((context, event) => {
+                    return {
+                      enhancement: {
+                        ...context.enhancement,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                    console.log(meta)
+                    console.log(meta);
                     return context.enhancement.targetState === "voiceClarity";
                   },
                 },
                 {
                   target: "switchOffVoiceClaritySetting",
+                  actions: assign((context, event) => {
+                    return {
+                      enhancement: {
+                        ...context.enhancement,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                    console.log(meta)
-                    return context.enhancement.targetState === "switchOffVoiceClaritySetting";
+                    console.log(meta);
+                    return (
+                      context.enhancement.targetState ===
+                      "switchOffVoiceClaritySetting"
+                    );
                   },
                 },
                 {
                   target: "soundNormalization",
+                  actions: assign((context, event) => {
+                    return {
+                      enhancement: {
+                        ...context.enhancement,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                    console.log(meta)
-                    return context.enhancement.targetState === "soundNormalization";
+                    console.log(meta);
+                    return (
+                      context.enhancement.targetState === "soundNormalization"
+                    );
                   },
                 },
                 {
                   target: "switchOffSoundNormalizationSetting",
+                  actions: assign((context, event) => {
+                    return {
+                      enhancement: {
+                        ...context.enhancement,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                    console.log(meta)
-                    return context.enhancement.targetState === "switchOffSoundNormalizationSetting";
+                    console.log(meta);
+                    return (
+                      context.enhancement.targetState ===
+                      "switchOffSoundNormalizationSetting"
+                    );
                   },
-                }, 
+                },
 
                 {
                   target: "hapticIntensity",
+                  actions: assign((context, event) => {
+                    return {
+                      enhancement: {
+                        ...context.enhancement,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                    console.log(meta)
-                    return context.enhancement.targetState === "hapticIntensity";
+                    console.log(meta);
+                    return (
+                      context.enhancement.targetState === "hapticIntensity"
+                    );
                   },
                 },
                 {
                   target: "switchOffHapticIntensitySetting",
+                  actions: assign((context, event) => {
+                    return {
+                      enhancement: {
+                        ...context.enhancement,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                    console.log(meta)
-                    return context.enhancement.targetState === "switchOffHapticIntensitySetting";
+                    console.log(meta);
+                    return (
+                      context.enhancement.targetState ===
+                      "switchOffHapticIntensitySetting"
+                    );
                   },
-                }, 
+                },
               ],
               onError: {
                 target: "idle",
@@ -345,112 +504,118 @@ const nariUltimateStateMachine = Machine(
           },
           bassboost: {
             on: {
-              completed: [
+              bassboostCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
+                  target: "idle",
+                },
+              ],
+            },
           },
           switchOffBassBoostSetting: {
             on: {
-              completed: [
+              switchOffBassBoostSettingCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
+                  target: "idle",
+                },
+              ],
+            },
           },
           voiceClarity: {
             on: {
-              completed: [
+              voiceClarityCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
+                  target: "idle",
+                },
+              ],
+            },
           },
           switchOffVoiceClaritySetting: {
             on: {
-              completed: [
+              switchOffVoiceClaritySettingCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
+                  target: "idle",
+                },
+              ],
+            },
           },
           soundNormalization: {
             on: {
-              completed: [
+              soundNormalizationCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
+                  target: "idle",
+                },
+              ],
+            },
           },
           switchOffSoundNormalizationSetting: {
             on: {
-              completed: [
+              switchOffSoundNormalizationSettingCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
+                  target: "idle",
+                },
+              ],
+            },
           },
           hapticIntensity: {
             on: {
-              completed: [
+              hapticIntensityCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
+                  target: "idle",
+                },
+              ],
+            },
           },
           switchOffHapticIntensitySetting: {
             on: {
-              completed: [
+              switchOffHapticIntensitySettingCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
-          }
-        }
+                  target: "idle",
+                },
+              ],
+            },
+          },
+        },
       },
       equalizer: {
         initial: "idle",
         states: {
           idle: {
             entry: (context) => {
-              if (context.equalizer.abortController) {
-                context.equalizer.abortController?.abort();
+              if (context.equalizer.promiseResolve) {
+                context.equalizer.promiseResolve(1);
               }
             },
             on: {
               equalizer: {
-                actions: assign<any>(ctx => {
+                actions: assign<any>((ctx) => {
                   return {
                     ...ctx,
                     equalizer: {
-                      abortController: new AbortController(),
                       targetState: "equalizer",
                     },
-                  }
+                  };
                 }),
-                target: "requestingLock"
+                target: "requestingLock",
               },
             },
           },
           requestingLock: {
             invoke: {
               id: "getLocks",
-              src: (context) =>
-                requestLocks(context.equalizer.abortController),
+              src: (context, event) => requestLocks(event.timerTick, LockMode.shared, LockMode.shared),
               onDone: [
                 {
                   target: "equalizer",
+                  actions: assign((context, event) => {
+                    return {
+                      equalizer: {
+                        ...context.equalizer,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context, event, meta) => {
-                    console.log(meta)
+                    console.log(meta);
                     return context.equalizer.targetState === "equalizer";
                   },
                 },
@@ -465,13 +630,13 @@ const nariUltimateStateMachine = Machine(
           },
           equalizer: {
             on: {
-              completed: [
+              equalizerCompleted: [
                 {
-                  target: "idle"
-                }
-              ]
-            }
-          }
+                  target: "idle",
+                },
+              ],
+            },
+          },
         },
       },
       lighting: {
@@ -479,15 +644,14 @@ const nariUltimateStateMachine = Machine(
         states: {
           idle: {
             entry: (context) => {
-              if (context.lighting.abortController) {
-                (context.lighting.abortController as any)?.abort();
+              if (context.lighting.promiseResolve) {
+                (context.lighting.promiseResolve as any)(1);
               }
             },
             on: {
               brightness: {
                 actions: assign<any>({
                   lighting: {
-                    abortController: new AbortController(),
                     targetState: "brightness",
                   },
                 }),
@@ -496,7 +660,6 @@ const nariUltimateStateMachine = Machine(
               switchOffSetting: {
                 actions: assign<any>({
                   lighting: {
-                    abortController: new AbortController(),
                     targetState: "switchOffSetting",
                   },
                 }),
@@ -505,7 +668,6 @@ const nariUltimateStateMachine = Machine(
               effects: {
                 actions: assign<any>({
                   lighting: {
-                    abortController: new AbortController(),
                     targetState: "effects",
                   },
                 }),
@@ -516,25 +678,49 @@ const nariUltimateStateMachine = Machine(
           requestingLock: {
             invoke: {
               id: "getLocks",
-              src: (context) => requestLocks(context.lighting.abortController),
+              src: (context, event) => requestLocks(event.timerTick, LockMode.shared, LockMode.shared),
               onDone: [
                 {
                   target: "brightness",
                   cond: (context) => {
                     return context.lighting.targetState === "brightness";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      lighting: {
+                        ...context.lighting,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "switchOffSetting",
                   cond: (context) => {
                     return context.lighting.targetState === "switchOffSetting";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      lighting: {
+                        ...context.lighting,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  })
                 },
                 {
                   target: "effects",
                   cond: (context) => {
                     return context.lighting.targetState === "effects";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      lighting: {
+                        ...context.lighting,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  })
                 },
                 {
                   target: "idle",
@@ -547,7 +733,7 @@ const nariUltimateStateMachine = Machine(
           },
           brightness: {
             on: {
-              completed: [
+              brightnessCompleted: [
                 {
                   target: "idle",
                 },
@@ -556,7 +742,7 @@ const nariUltimateStateMachine = Machine(
           },
           switchOffSetting: {
             on: {
-              completed: [
+              switchOffSettingCompleted: [
                 {
                   target: "idle",
                 },
@@ -565,7 +751,7 @@ const nariUltimateStateMachine = Machine(
           },
           effects: {
             on: {
-              completed: [
+              effectsCompleted: [
                 {
                   target: "idle",
                 },
@@ -579,15 +765,14 @@ const nariUltimateStateMachine = Machine(
         states: {
           idle: {
             entry: (context) => {
-              if (context.power.abortController) {
-                (context.power.abortController as any)?.abort();
+              if (context.power.promiseResolve) {
+                (context.power.promiseResolve as any)(1);
               }
             },
             on: {
               powerSaving: {
                 actions: assign<any>({
                   power: {
-                    abortController: new AbortController(),
                     targetState: "powerSaving",
                   },
                 }),
@@ -596,7 +781,6 @@ const nariUltimateStateMachine = Machine(
               switchOffSetting: {
                 actions: assign<any>({
                   power: {
-                    abortController: new AbortController(),
                     targetState: "switchOffSetting",
                   },
                 }),
@@ -607,19 +791,35 @@ const nariUltimateStateMachine = Machine(
           requestingLock: {
             invoke: {
               id: "getLocks",
-              src: (context) => requestLocks(context.power.abortController),
+              src: (context, event) => requestLocks(event.timerTick, LockMode.shared, LockMode.shared),
               onDone: [
                 {
                   target: "powerSaving",
                   cond: (context) => {
                     return context.power.targetState === "powerSaving";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      power: {
+                        ...context.power,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "switchOffSetting",
                   cond: (context) => {
                     return context.power.targetState === "switchOffSetting";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      power: {
+                        ...context.power,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "idle",
@@ -632,7 +832,7 @@ const nariUltimateStateMachine = Machine(
           },
           powerSaving: {
             on: {
-              completed: [
+              powerSavingCompleted: [
                 {
                   target: "idle",
                 },
@@ -641,7 +841,7 @@ const nariUltimateStateMachine = Machine(
           },
           switchOffSetting: {
             on: {
-              completed: [
+              switchOffSettingCompleted: [
                 {
                   target: "idle",
                 },
@@ -655,15 +855,15 @@ const nariUltimateStateMachine = Machine(
         states: {
           idle: {
             entry: (context) => {
-              if (context.mic.abortController) {
-                (context.mic.abortController as any)?.abort();
+              console.log("idle entry");
+              if (context.mic.promiseResolve) {
+                context.mic?.promiseResolve(1);
               }
             },
             on: {
               switchOffMicroPhoneSetting: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "switchOffMicroPhoneSetting",
                   },
                 }),
@@ -672,17 +872,15 @@ const nariUltimateStateMachine = Machine(
               volume: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "volume",
                   },
                 }),
                 target: "requestingLock",
               },
-             
+
               sensitivity: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "sensitivity",
                   },
                 }),
@@ -691,7 +889,6 @@ const nariUltimateStateMachine = Machine(
               switchOffSensitivitySetting: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "switchOffSensitivitySetting",
                   },
                 }),
@@ -700,7 +897,6 @@ const nariUltimateStateMachine = Machine(
               micPreview: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "micPreview",
                   },
                 }),
@@ -709,7 +905,6 @@ const nariUltimateStateMachine = Machine(
               sidetone: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "sidetone",
                   },
                 }),
@@ -718,7 +913,6 @@ const nariUltimateStateMachine = Machine(
               switchOffSidetoneSetting: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "switchOffSidetoneSetting",
                   },
                 }),
@@ -727,7 +921,6 @@ const nariUltimateStateMachine = Machine(
               volumeNormalization: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "volumeNormalization",
                   },
                 }),
@@ -736,7 +929,6 @@ const nariUltimateStateMachine = Machine(
               ambientNoiseReduction: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "ambientNoiseReduction",
                   },
                 }),
@@ -745,25 +937,23 @@ const nariUltimateStateMachine = Machine(
               vocalClarity: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "vocalClarity",
                   },
                 }),
                 target: "requestingLock",
-              }
+              },
             },
           },
           idleMicPreview: {
             entry: (context) => {
-              if (context.mic.abortController) {
-                (context.mic.abortController as any)?.abort();
+              if (context.mic.promiseResolve) {
+                (context.mic.promiseResolve as any)(1);
               }
             },
             on: {
               switchOffMicroPhoneSetting: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "switchOffMicroPhoneSetting",
                   },
                 }),
@@ -772,17 +962,14 @@ const nariUltimateStateMachine = Machine(
               volume: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "volume",
                   },
                 }),
                 target: "requestingLock",
               },
-             
               sensitivity: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "sensitivity",
                   },
                 }),
@@ -791,7 +978,6 @@ const nariUltimateStateMachine = Machine(
               switchOffSensitivitySetting: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "switchOffSensitivitySetting",
                   },
                 }),
@@ -800,7 +986,6 @@ const nariUltimateStateMachine = Machine(
               micPreview: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "micPreview",
                   },
                 }),
@@ -809,7 +994,6 @@ const nariUltimateStateMachine = Machine(
               sidetone: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "sidetone",
                   },
                 }),
@@ -818,7 +1002,6 @@ const nariUltimateStateMachine = Machine(
               switchOffSidetoneSetting: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "switchOffSidetoneSetting",
                   },
                 }),
@@ -827,7 +1010,6 @@ const nariUltimateStateMachine = Machine(
               volumeNormalization: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "volumeNormalization",
                   },
                 }),
@@ -836,7 +1018,6 @@ const nariUltimateStateMachine = Machine(
               ambientNoiseReduction: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "ambientNoiseReduction",
                   },
                 }),
@@ -845,23 +1026,32 @@ const nariUltimateStateMachine = Machine(
               vocalClarity: {
                 actions: assign<any>({
                   mic: {
-                    abortController: new AbortController(),
                     targetState: "vocalClarity",
                   },
                 }),
                 target: "requestingLock",
-              }
-            }
+              },
+            },
           },
           requestingLock: {
             invoke: {
               id: "getLocks",
-              src: (context) => requestLocks(context.mic.abortController),
+              src: (context, event) => requestLocks(event.timerTick, LockMode.shared, LockMode.shared),
               onDone: [
                 {
                   target: "switchOffMicroPhoneSetting",
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                   cond: (context) => {
-                    return context.mic.targetState === "switchOffMicroPhoneSetting";
+                    return (
+                      context.mic.targetState === "switchOffMicroPhoneSetting"
+                    );
                   },
                 },
                 {
@@ -869,54 +1059,130 @@ const nariUltimateStateMachine = Machine(
                   cond: (context) => {
                     return context.mic.targetState === "volume";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "sensitivity",
                   cond: (context) => {
                     return context.mic.targetState === "sensitivity";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "switchOffSensitivitySetting",
                   cond: (context) => {
-                    return context.mic.targetState === "switchOffSensitivitySetting";
+                    return (
+                      context.mic.targetState === "switchOffSensitivitySetting"
+                    );
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "micPreview",
                   cond: (context) => {
                     return context.mic.targetState === "micPreview";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "sidetone",
                   cond: (context) => {
                     return context.mic.targetState === "sidetone";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "switchOffSidetoneSetting",
                   cond: (context) => {
-                    return context.mic.targetState === "switchOffSidetoneSetting";
+                    return (
+                      context.mic.targetState === "switchOffSidetoneSetting"
+                    );
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "volumeNormalization",
                   cond: (context) => {
                     return context.mic.targetState === "volumeNormalization";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "ambientNoiseReduction",
                   cond: (context) => {
                     return context.mic.targetState === "ambientNoiseReduction";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "vocalClarity",
                   cond: (context) => {
                     return context.mic.targetState === "vocalClarity";
                   },
+                  actions: assign((context, event) => {
+                    return {
+                      mic: {
+                        ...context.mic,
+                        promiseResolve: event.data.resolve,
+                      },
+                    };
+                  }),
                 },
                 {
                   target: "idle",
@@ -930,17 +1196,17 @@ const nariUltimateStateMachine = Machine(
 
           switchOffMicroPhoneSetting: {
             on: {
-              completed: [
+              switchOffMicroPhoneSettingCompleted: [
                 {
                   target: "idle",
-                  actions: ["closeMicPreview"]
+                  actions: ["closeMicPreview"],
                 },
               ],
             },
           },
           volume: {
             on: {
-              completed: [
+              volumeCompleted: [
                 {
                   target: "idle",
                 },
@@ -949,7 +1215,7 @@ const nariUltimateStateMachine = Machine(
           },
           sensitivity: {
             on: {
-              completed: [
+              sensitivityCompleted: [
                 {
                   target: "idle",
                 },
@@ -958,7 +1224,7 @@ const nariUltimateStateMachine = Machine(
           },
           switchOffSensitivitySetting: {
             on: {
-              completed: [
+              switchOffSensitivitySettingCompleted: [
                 {
                   target: "idle",
                 },
@@ -967,32 +1233,35 @@ const nariUltimateStateMachine = Machine(
           },
           micPreview: {
             on: {
-              completed: [
+              micPreviewCompleted: [
                 {
-                 target:"idle",
-                 cond: (context, event, meta) => {      
-                   return context.isMicPreview; 
-                 }
+                  target: "idle",
+                  cond: (context, event, meta) => {
+                    return context.isMicPreview;
+                  },
+                  actions: () => {
+                    console.log("[on completed - idle]");
+                  },
                 },
                 {
                   target: "idleMicPreview",
                   cond: (context, event, meta) => {
-                    return !context.isMicPreview; 
-                  }
-                }
+                    return !context.isMicPreview;
+                  },
+                },
               ],
             },
-            entry: (context)=> {
-               console.log("[entry]");
+            entry: (context) => {
+              console.log("[entry]");
             },
-            exit: (context)=> {
+            exit: (context) => {
               console.log("[exit]");
               context.isMicPreview = !context.isMicPreview;
-            }
+            },
           },
           sidetone: {
             on: {
-              completed: [
+              sidetoneCompleted: [
                 {
                   target: "idle",
                 },
@@ -1001,7 +1270,7 @@ const nariUltimateStateMachine = Machine(
           },
           switchOffSidetoneSetting: {
             on: {
-              completed: [
+              switchOffSidetoneSettingCompleted: [
                 {
                   target: "idle",
                 },
@@ -1010,7 +1279,7 @@ const nariUltimateStateMachine = Machine(
           },
           volumeNormalization: {
             on: {
-              completed: [
+              volumeNormalizationCompleted: [
                 {
                   target: "idle",
                 },
@@ -1019,7 +1288,7 @@ const nariUltimateStateMachine = Machine(
           },
           ambientNoiseReduction: {
             on: {
-              completed: [
+              ambientNoiseReductionCompleted: [
                 {
                   target: "idle",
                 },
@@ -1028,28 +1297,42 @@ const nariUltimateStateMachine = Machine(
           },
           vocalClarity: {
             on: {
-              completed: [
+              vocalClarityCompleted: [
                 {
                   target: "idle",
                 },
               ],
             },
           },
-        }
-      }
+        },
+      },
     },
   },
 
   {
     actions: {
       closeMicPreview: (context) => {
-        // open it if need 
+        // open it if need
         // context.mic.isMicOn = !context.mic.isMicOn;
         // if (!context.mic.isMicOn) {
         //   context.isMicPreview = false;
         // }
-      }
-    }
+      },
+      ignoreTask: (_context, event) => {
+        console.log("ignore", event.type);
+        if (!event.notification) {
+          const responseEvent = new CustomEvent("xstate_ignored");
+          responseEvent.timerTick = event?.data?.timerTick ?? event.timerTick;
+          window.dispatchEvent(responseEvent);
+        }
+      },
+      dispatchError: (_context, event) => {
+        console.log("error", event.type);
+        const responseEvent = new CustomEvent("xstate_error");
+        responseEvent.timerTick = event.data ?? event.timerTick;
+        window.dispatchEvent(responseEvent);
+      },
+    },
   }
 );
 
