@@ -96,6 +96,7 @@ const nariUltimateStateMachine = Machine(
       mic: {
         abortController: undefined,
         targetState: "",
+        isMicOn: true,
       }
     },
     states: {
@@ -932,6 +933,7 @@ const nariUltimateStateMachine = Machine(
               completed: [
                 {
                   target: "idle",
+                  actions: ["closeMicPreview"]
                 },
               ],
             },
@@ -1036,6 +1038,18 @@ const nariUltimateStateMachine = Machine(
         }
       }
     },
+  },
+
+  {
+    actions: {
+      closeMicPreview: (context) => {
+        // open it if need 
+        // context.mic.isMicOn = !context.mic.isMicOn;
+        // if (!context.mic.isMicOn) {
+        //   context.isMicPreview = false;
+        // }
+      }
+    }
   }
 );
 
