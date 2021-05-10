@@ -41,6 +41,7 @@ const requestLocks = async (abortController: AbortController | undefined) => {
                   if (deviceLock) {
                     return new Promise((resolve) => {
                       abortController?.signal?.addEventListener("abort", () => {
+                        console.log("[abort] --- ");
                         resolve(1);
                       });
                       outterResolve(1);
@@ -71,6 +72,7 @@ const nariUltimateStateMachine = Machine(
     type: "parallel",
     initial: "idle",
     context: {
+      isMicPreview: false,
       mixer: {
         abortController: undefined,
         targetState:"",
@@ -750,6 +752,106 @@ const nariUltimateStateMachine = Machine(
               }
             },
           },
+          idleMicPreview: {
+            entry: (context) => {
+              if (context.mic.abortController) {
+                (context.mic.abortController as any)?.abort();
+              }
+            },
+            on: {
+              switchOffMicroPhoneSetting: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "switchOffMicroPhoneSetting",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              volume: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "volume",
+                  },
+                }),
+                target: "requestingLock",
+              },
+             
+              sensitivity: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "sensitivity",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              switchOffSensitivitySetting: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "switchOffSensitivitySetting",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              micPreview: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "micPreview",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              sidetone: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "sidetone",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              switchOffSidetoneSetting: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "switchOffSidetoneSetting",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              volumeNormalization: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "volumeNormalization",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              ambientNoiseReduction: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "ambientNoiseReduction",
+                  },
+                }),
+                target: "requestingLock",
+              },
+              vocalClarity: {
+                actions: assign<any>({
+                  mic: {
+                    abortController: new AbortController(),
+                    targetState: "vocalClarity",
+                  },
+                }),
+                target: "requestingLock",
+              }
+            }
+          },
           requestingLock: {
             invoke: {
               id: "getLocks",
@@ -865,10 +967,26 @@ const nariUltimateStateMachine = Machine(
             on: {
               completed: [
                 {
-                  target: "idle",
+                 target:"idle",
+                 cond: (context, event, meta) => {      
+                   return context.isMicPreview; 
+                 }
                 },
+                {
+                  target: "idleMicPreview",
+                  cond: (context, event, meta) => {
+                    return !context.isMicPreview; 
+                  }
+                }
               ],
             },
+            entry: (context)=> {
+               console.log("[entry]");
+            },
+            exit: (context)=> {
+              console.log("[exit]");
+              context.isMicPreview = !context.isMicPreview;
+            }
           },
           sidetone: {
             on: {
